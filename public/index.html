@@ -25,9 +25,7 @@
                 {id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@montecarlo.com', role: 'admin'},
                 {id: 2, firstName: 'Analyst', lastName: 'User', email: 'analyst@montecarlo.com', role: 'analyst'}
             ]);
-            const [reports, setReports] = useState([
-                {id: 1, project: 'Proyecto Demo', date: '2024-01-15', name: 'Reporte Simulación Monte Carlo'}
-            ]);
+            const [reports, setReports] = useState([]);
             const [newProject, setNewProject] = useState({name: '', description: '', status: 'active'});
             const [selectedProject, setSelectedProject] = useState(null);
             const [projectVariables, setProjectVariables] = useState([]);
@@ -37,6 +35,125 @@
             const [editingUser, setEditingUser] = useState(null);
             const [searchProject, setSearchProject] = useState('');
             const [searchDate, setSearchDate] = useState('');
+            const [viewingReport, setViewingReport] = useState(null);
+            
+            // Función para ejecutar simulación Monte Carlo
+            const executeMonteCarloSimulation = (variables, config) => {
+                const scenarios = [];
+                const results = [];
+                
+                for (let i = 0; i < config.iterations; i++) {
+                    const scenario = { iteration: i + 1, values: {} };
+                    let result = 0;
+                    
+                    variables.forEach(variable => {
+                        let value;
+                        switch (variable.distribution) {
+                            case 'normal':
+                                value = normalRandom(50, 15);
+                                break;
+                            case 'uniforme':
+                                value = Math.random() * 100;
+                                break;
+                            case 'triangular':
+                                value = triangularRandom(10, 50, 90);
+                                break;
+                            default:
+                                value = Math.random() * 100;
+                        }
+                        scenario.values[variable.name] = value;
+                        result += value;
+                    });
+                    
+                    scenario.result = result;
+                    scenarios.push(scenario);
+                    results.push(result);
+                }
+                
+                const average = results.reduce((a, b) => a + b, 0) / results.length;
+                const variance = results.reduce((a, b) => a + Math.pow(b - average, 2), 0) / results.length;
+                const stdDev = Math.sqrt(variance);
+                const sorted = results.sort((a, b) => a - b);
+                const p50 = sorted[Math.floor(sorted.length * 0.5)];
+                const p90 = sorted[Math.floor(sorted.length * 0.9)];
+                
+                return {
+                    scenarios,
+                    results,
+                    metrics: { average, stdDev, variance, p50, p90, min: Math.min(...results), max: Math.max(...results) }
+                };
+            };
+            
+            const normalRandom = (mean, stdDev) => {
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z0 * stdDev + mean;
+            };
+            
+            const triangularRandom = (min, mode, max) => {
+                const u = Math.random();
+                const f = (mode - min) / (max - min);
+                if (u < f) {
+                    return min + Math.sqrt(u * (max - min) * (mode - min));
+                } else {
+                    return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+                }
+            };
+            
+            const generateCharts = (simulationResults) => {
+                const { results, metrics } = simulationResults;
+                const bins = 10;
+                const binSize = (metrics.max - metrics.min) / bins;
+                const histogram = Array(bins).fill(0);
+                
+                results.forEach(value => {
+                    const binIndex = Math.min(Math.floor((value - metrics.min) / binSize), bins - 1);
+                    histogram[binIndex]++;
+                });
+                
+                return {
+                    histogram: {
+                        bins: histogram,
+                        labels: Array(bins).fill(0).map((_, i) => `${(metrics.min + i * binSize).toFixed(1)}-${(metrics.min + (i + 1) * binSize).toFixed(1)}`)
+                    }
+                };
+            };
+            
+            const viewReport = (report) => {
+                setViewingReport(report);
+            };
+            
+            const downloadReport = (report, format) => {
+                const content = generateReportContent(report, format);
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${report.name}.${format}`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+            
+            const generateReportContent = (report, format) => {
+                const { project, date, variables, config, results, charts } = report;
+                
+                return `REPORTE DE SIMULACIÓN MONTE CARLO\n\n` +
+                    `Proyecto: ${project}\n` +
+                    `Fecha: ${date}\n` +
+                    `Iteraciones: ${config.iterations}\n\n` +
+                    `VARIABLES CONFIGURADAS:\n` +
+                    variables.map(v => `- ${v.name}: ${v.type} (${v.distribution})`).join('\n') + '\n\n' +
+                    `RESULTADOS:\n` +
+                    `- Promedio: ${results.metrics.average.toFixed(2)}\n` +
+                    `- Desviación Estándar: ${results.metrics.stdDev.toFixed(2)}\n` +
+                    `- Mínimo: ${results.metrics.min.toFixed(2)}\n` +
+                    `- Máximo: ${results.metrics.max.toFixed(2)}\n` +
+                    `- Percentil 50: ${results.metrics.p50.toFixed(2)}\n` +
+                    `- Percentil 90: ${results.metrics.p90.toFixed(2)}\n\n` +
+                    `HISTOGRAMA:\n` +
+                    charts.histogram.labels.map((label, i) => `${label}: ${charts.histogram.bins[i]} casos`).join('\n');
+            };
             
             const handleLogin = async () => {
                 try {
@@ -159,11 +276,111 @@
                                             React.createElement('td', { className: 'p-4' }, report.date),
                                             React.createElement('td', { className: 'p-4' }, report.name),
                                             React.createElement('td', { className: 'p-4 space-x-2' },
-                                                React.createElement('button', { className: 'bg-green-600 text-white px-3 py-1 rounded text-sm' }, 'PDF'),
-                                                React.createElement('button', { className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm' }, 'DOC')
+                                                React.createElement('button', {
+                                                    onClick: () => downloadReport(report, 'pdf'),
+                                                    className: 'bg-green-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'PDF'),
+                                                React.createElement('button', {
+                                                    onClick: () => downloadReport(report, 'doc'),
+                                                    className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'DOC'),
+                                                React.createElement('button', {
+                                                    onClick: () => viewReport(report),
+                                                    className: 'bg-purple-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Ver')
                                             )
                                         )
                                     )
+                                )
+                            )
+                        ),
+                        
+                        // Modal para ver reporte detallado
+                        viewingReport && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
+                            React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-auto' },
+                                React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                                    React.createElement('h2', { className: 'text-2xl font-bold' }, viewingReport.name),
+                                    React.createElement('button', {
+                                        onClick: () => setViewingReport(null),
+                                        className: 'text-gray-500 hover:text-gray-700 text-2xl'
+                                    }, '×')
+                                ),
+                                
+                                React.createElement('div', { className: 'grid grid-cols-2 gap-6' },
+                                    React.createElement('div', { className: 'bg-gray-50 p-4 rounded' },
+                                        React.createElement('h3', { className: 'font-semibold mb-3' }, 'Información del Proyecto'),
+                                        React.createElement('p', null, `Proyecto: ${viewingReport.project}`),
+                                        React.createElement('p', null, `Fecha: ${viewingReport.date}`),
+                                        React.createElement('p', null, `Iteraciones: ${viewingReport.config.iterations}`),
+                                        React.createElement('p', null, `Variables: ${viewingReport.variables.length}`)
+                                    ),
+                                    
+                                    React.createElement('div', { className: 'bg-blue-50 p-4 rounded' },
+                                        React.createElement('h3', { className: 'font-semibold mb-3' }, 'Métricas Principales'),
+                                        React.createElement('p', null, `Promedio: ${viewingReport.results.metrics.average.toFixed(2)}`),
+                                        React.createElement('p', null, `Desviación: ${viewingReport.results.metrics.stdDev.toFixed(2)}`),
+                                        React.createElement('p', null, `Mínimo: ${viewingReport.results.metrics.min.toFixed(2)}`),
+                                        React.createElement('p', null, `Máximo: ${viewingReport.results.metrics.max.toFixed(2)}`)
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6' },
+                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Variables Configuradas'),
+                                    React.createElement('div', { className: 'grid grid-cols-3 gap-4' },
+                                        viewingReport.variables.map(variable => 
+                                            React.createElement('div', { key: variable.id, className: 'border p-3 rounded' },
+                                                React.createElement('p', { className: 'font-medium' }, variable.name),
+                                                React.createElement('p', { className: 'text-sm text-gray-600' }, `${variable.type} - ${variable.distribution}`)
+                                            )
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6' },
+                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Distribución de Resultados (Histograma)'),
+                                    React.createElement('div', { className: 'bg-gray-50 p-4 rounded' },
+                                        React.createElement('div', { className: 'flex items-end space-x-1 h-40' },
+                                            viewingReport.charts.histogram.bins.map((count, i) => {
+                                                const maxCount = Math.max(...viewingReport.charts.histogram.bins);
+                                                const height = (count / maxCount) * 100;
+                                                return React.createElement('div', {
+                                                    key: i,
+                                                    className: 'bg-blue-500 flex-1 flex items-end justify-center text-white text-xs',
+                                                    style: { height: `${height}%`, minHeight: '20px' },
+                                                    title: `${viewingReport.charts.histogram.labels[i]}: ${count} casos`
+                                                }, count);
+                                            })
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6' },
+                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Percentiles'),
+                                    React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                                        React.createElement('div', { className: 'bg-green-50 p-4 rounded text-center' },
+                                            React.createElement('p', { className: 'text-2xl font-bold text-green-700' }, viewingReport.results.metrics.p50.toFixed(2)),
+                                            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Percentil 50 (Mediana)')
+                                        ),
+                                        React.createElement('div', { className: 'bg-orange-50 p-4 rounded text-center' },
+                                            React.createElement('p', { className: 'text-2xl font-bold text-orange-700' }, viewingReport.results.metrics.p90.toFixed(2)),
+                                            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Percentil 90')
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6 flex gap-4' },
+                                    React.createElement('button', {
+                                        onClick: () => downloadReport(viewingReport, 'pdf'),
+                                        className: 'bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700'
+                                    }, 'Descargar PDF'),
+                                    React.createElement('button', {
+                                        onClick: () => downloadReport(viewingReport, 'doc'),
+                                        className: 'bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700'
+                                    }, 'Descargar DOC'),
+                                    React.createElement('button', {
+                                        onClick: () => setViewingReport(null),
+                                        className: 'bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700'
+                                    }, 'Cerrar')
                                 )
                             )
                         )
@@ -171,7 +388,6 @@
                     currentPage === 'proyectos' && React.createElement('div', null,
                         React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Proyectos Monte Carlo'),
                         
-                        // Crear nuevo proyecto
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow mb-6' },
                             React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Crear Nuevo Proyecto'),
                             React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
@@ -209,7 +425,6 @@
                             }, 'Crear Proyecto')
                         ),
                         
-                        // Lista de proyectos
                         React.createElement('div', { className: 'bg-white rounded-xl shadow' },
                             React.createElement('div', { className: 'p-4 border-b' },
                                 React.createElement('input', {
@@ -257,7 +472,6 @@
                             )
                         ),
                         
-                        // Modal de configuración de proyecto
                         selectedProject && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
                             React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-4xl max-h-screen overflow-auto' },
                                 React.createElement('div', { className: 'flex justify-between items-center mb-6' },
@@ -268,7 +482,6 @@
                                     }, '×')
                                 ),
                                 
-                                // Variables del proyecto
                                 React.createElement('div', { className: 'mb-6' },
                                     React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Variables del Proyecto'),
                                     React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-4' },
@@ -307,7 +520,6 @@
                                         }, 'Agregar')
                                     ),
                                     
-                                    // Lista de variables
                                     projectVariables.length > 0 && React.createElement('div', { className: 'border rounded' },
                                         React.createElement('table', { className: 'w-full' },
                                             React.createElement('thead', { className: 'bg-gray-50' },
@@ -337,7 +549,6 @@
                                     )
                                 ),
                                 
-                                // Configuración de simulación
                                 React.createElement('div', { className: 'mb-6' },
                                     React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Configuración de Simulación'),
                                     React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
@@ -366,8 +577,24 @@
                                     React.createElement('button', {
                                         onClick: () => {
                                             if (projectVariables.length > 0) {
-                                                alert('Simulación iniciada con ' + projectVariables.length + ' variables y ' + simulationConfig.iterations + ' iteraciones');
+                                                const results = executeMonteCarloSimulation(projectVariables, simulationConfig);
+                                                
+                                                const report = {
+                                                    id: Date.now(),
+                                                    project: selectedProject.name,
+                                                    date: new Date().toISOString().split('T')[0],
+                                                    name: `Reporte ${selectedProject.name} - ${new Date().toLocaleDateString()}`,
+                                                    variables: projectVariables,
+                                                    config: simulationConfig,
+                                                    results: results,
+                                                    charts: generateCharts(results)
+                                                };
+                                                
+                                                setReports([...reports, report]);
+                                                
+                                                alert(`Simulación completada:\n- ${results.scenarios.length} escenarios generados\n- Promedio: ${results.metrics.average.toFixed(2)}\n- Desviación: ${results.metrics.stdDev.toFixed(2)}\n\nReporte guardado en la sección Reportes`);
                                                 setSelectedProject(null);
+                                                setProjectVariables([]);
                                             } else {
                                                 alert('Debe agregar al menos una variable para ejecutar la simulación');
                                             }
