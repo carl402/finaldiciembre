@@ -270,21 +270,29 @@
             
             const handleLogin = async () => {
                 try {
+                    console.log('🔐 Attempting login with:', loginData);
+                    
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(loginData)
                     });
                     
+                    console.log('📞 Response status:', response.status);
+                    
                     if (response.ok) {
                         const userData = await response.json();
+                        console.log('✅ Login successful:', userData);
                         setUser(userData);
                         setCurrentPage('reportes');
                         setLoginError('');
                     } else {
+                        const errorData = await response.json();
+                        console.log('❌ Login failed:', errorData);
                         setLoginError('Credenciales inválidas');
                     }
                 } catch (error) {
+                    console.error('❌ Login error:', error);
                     setLoginError('Error de conexión');
                 }
             };

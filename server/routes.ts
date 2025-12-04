@@ -218,38 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User management routes (demo mode - returns sample data)
-  app.get('/api/users', async (req: any, res) => {
-    try {
-      // Return demo users for testing
-      const demoUsers = [
-        {
-          id: "demo-user-1",
-          email: "admin@example.com",
-          firstName: "Admin",
-          lastName: "User",
-          role: "admin",
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: "demo-user-2", 
-          email: "analyst@example.com",
-          firstName: "Analyst",
-          lastName: "User", 
-          role: "analyst",
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
-      res.json(demoUsers);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
+  // Removed duplicate user route - using Monte Carlo version below
 
   app.patch('/api/users/:id/role', async (req: any, res) => {
     try {
@@ -288,16 +257,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication
   app.post('/api/auth/login', async (req, res) => {
     try {
+      console.log('🔐 Login attempt:', req.body);
       const { email, password } = req.body;
-      const users = await storage.getAllUsers();
-      const user = users.find(u => u.email === email);
       
-      if (user && user.password === password) {
-        res.json({ id: user.id, email: user.email, firstName: user.firstName, role: user.role });
+      if (!email || !password) {
+        console.log('❌ Missing email or password');
+        return res.status(400).json({ message: 'Email and password required' });
+      }
+      
+      const users = await storage.getAllUsers();
+      console.log('👥 Users in database:', users.length);
+      
+      const user = users.find(u => u.email === email && u.password === password);
+      console.log('🔍 User found:', user ? 'Yes' : 'No');
+      
+      if (user) {
+        const userResponse = { 
+          id: user.id, 
+          email: user.email, 
+          firstName: user.firstName || user.first_name, 
+          role: user.role 
+        };
+        console.log('✅ Login successful:', userResponse);
+        res.json(userResponse);
       } else {
+        console.log('❌ Invalid credentials for:', email);
         res.status(401).json({ message: 'Invalid credentials' });
       }
     } catch (error) {
+      console.error('❌ Login error:', error);
       res.status(500).json({ message: 'Login failed' });
     }
   });

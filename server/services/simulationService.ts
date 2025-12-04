@@ -70,17 +70,17 @@ export class SimulationService {
 
     await storage.updateSimulationStatus(simulationId, "running");
 
-    const iterations = (sim.iterations as number) || 1000;
+    const iterations = (sim.iterations as any) || 1000;
     const scenarios = await storage.getScenariosBySimulationId(simulationId);
 
-    const project = await storage.getProjectById(sim.projectId as string);
+    const project = await storage.getProjectById(sim.projectId as any);
     const projectName = project?.name || "unknown";
 
-    const config: SimulationConfig = sim.config || {};
+    const config: SimulationConfig = (sim.config as any) || {};
 
     const report: any = {
       simulationId,
-      name: sim.name,
+      name: (sim as any).name || 'Simulation',
       projectName,
       iterations,
       scenarios: [],
@@ -89,13 +89,13 @@ export class SimulationService {
 
     try {
       for (const sc of scenarios) {
-        const scenarioResult: any = { id: sc.id, name: sc.name, variables: sc.variables, samplesSummary: null };
+        const scenarioResult: any = { id: sc.id, name: (sc as any).name || 'Scenario', variables: (sc as any).variables || [], samplesSummary: null };
 
         // Run Monte Carlo samples
         const outputs: number[] = [];
         for (let i = 0; i < iterations; i++) {
           const sampleVars: Record<string, number> = {};
-          for (const v of sc.variables as VariableSpec[]) {
+          for (const v of ((sc as any).variables || []) as VariableSpec[]) {
             sampleVars[v.name] = sampleVariable(v);
           }
 
@@ -135,7 +135,7 @@ export class SimulationService {
       }
 
       // Save report
-      const saved = await storage.createSimulationReport({ simulationId, projectName, report });
+      const saved = await storage.createSimulationReport({ simulationId, projectName, reportData: report } as any);
       await storage.updateSimulationStatus(simulationId, "completed");
       return saved;
     } catch (error) {
