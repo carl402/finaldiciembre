@@ -1,0 +1,62 @@
+{
+  "name": "take-a-look",
+  "version": "1.0.0",
+  "description": "Sistema de Análisis de Logs - Take a Look",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "ts-node -P tsconfig.scripts.json server/index.ts",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:client",
+    "build:client": "cd client && npm install && npm run build",
+    "start": "node server/index.js",
+    "postinstall": "cd client && npm install",
+    "preview": "cd client && npm run preview",
+    "db:init": "node scripts/init-db.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test:e2e": "node scripts/test-e2e.js",
+    "setup": "npm install && cd client && npm install && cd .. && npm run db:init",
+    "health-check": "curl -f http://localhost:5001/health || exit 1",
+    "db:test": "node scripts/test-db-connection.js",
+    "server:start": "node scripts/start-server.js"
+  },
+  "keywords": [
+    "log-analysis",
+    "react",
+    "typescript",
+    "vite"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/take-a-look.git"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "@types/multer": "^1.4.12",
+    "concurrently": "^8.2.2",
+    "drizzle-kit": "^0.28.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.0",
+    "drizzle-zod": "^0.8.3",
+    "express": "^5.2.1",
+    "express-session": "^1.18.2",
+    "memoizee": "^0.4.17",
+    "multer": "^2.0.2",
+    "openid-client": "^6.8.1",
+    "passport": "^0.7.0",
+    "ws": "^8.18.3",
+    "zod": "^4.1.13"
+  }
+}

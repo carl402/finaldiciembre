@@ -1,0 +1,58 @@
+Quiero que generes un sistema web completo llamado "Take a Look", desarrollado con Next.js, Prisma y PostgreSQL. El sistema debe incluir frontend, backend y base de datos, y estar estructurado para facilitar el análisis de archivos `.log` cargados por el usuario.
+
+### 🔧 Tecnologías:
+- Next.js (v14+)
+- TypeScript
+- TailwindCSS
+- Prisma ORM
+- PostgreSQL
+- API REST con rutas en `/api`
+
+### 📦 Módulos funcionales:
+
+1. **Carga de archivos .log**
+   - Componente `CargaLog.tsx` con input de archivo
+   - Validación de duplicados por nombre y hash
+   - Envío a endpoint `/api/procesar-log`
+
+2. **Procesamiento de errores**
+   - Endpoint que analiza el contenido del archivo
+   - Clasificación por tipo de error (404, 500, etc.)
+   - Registro en base de datos
+
+3. **Historial de reportes**
+   - Página `/reportes` con tabla de logs procesados
+   - Filtros por fecha, tipo de error, nombre de archivo
+
+4. **Dashboard analítico**
+   - Página `/dashboard` con gráficos (usando Chart.js o similar)
+   - Métricas: cantidad de errores por tipo, por día, por archivo
+
+5. **Persistencia en base de datos**
+   - Modelo `Log` con campos: `id`, `nombreArchivo`, `hashArchivo`, `fechaCarga`, `contenido`, `erroresDetectados`
+   - Modelo `Error` con campos: `id`, `tipo`, `mensaje`, `linea`, `logId`
+
+6. **Interfaz de usuario**
+   - Página principal con navegación a módulos
+   - Estilo limpio con TailwindCSS
+   - Mensajes de éxito/error en cada acción
+
+### 📁 Estructura esperada:
+
+- `src/app/page.tsx` → Página principal
+- `src/app/carga-log/page.tsx` → Vista de carga
+- `src/app/reportes/page.tsx` → Historial
+- `src/app/dashboard/page.tsx` → Dashboard
+- `src/components/` → Componentes reutilizables
+- `src/app/api/procesar-log/route.ts` → Endpoint de carga
+- `prisma/schema.prisma` → Modelos `Log` y `Error`
+- `.env` → Configuración de base de datos
+
+### 🧪 Extras opcionales:
+- Validación de formato del archivo `.log`
+- Detección de errores críticos en tiempo real
+- Exportación de reportes en PDF o CSV
+
+Genera el sistema con esta estructura, incluyendo los componentes, rutas, modelos y lógica básica para que pueda ser probado y extendido fácilmente.
+falta un modulo para gestionar usuarios donde se pueda registar los usuarios al sistema y tambien debe haber otrav interfaz para ver todos los usuarios y datos registrados en el sistema . ademas debe haber una interfaz de log in
+en los reportes deben haber sugerencias de como solucionar los errores encontrados al igual que en el dahsboard, hay un error al seleccionar ver todos en la parte de actividad reciente del dashboard, agrega tambien para que las notificaciones lleguen a mensajes por telegram, corrige los errores al procesar los archivos, y permite que suban archivos .txt tambien para analizarlos, falta un modulo para registrar usuarios, arregla el modulo de reportes para que cuando no hayan reportes aun se pueda ingresar al modulo y en el log in agrega un boton de entrar. ademas el sistema debe ser ressponsive es decir que se vea bien en disferentes formatos de dispossitivo, y los colores de las interfaces quiero que se manejen en una combinacion de azul acercado al violeta, blanco y amarillo y que tenga un icono arriba siempre para cambiar de modo claro a modo oscuro en el modo oscuro se cambia los colores de azul a morado
