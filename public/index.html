@@ -21,10 +21,7 @@
             const [loginError, setLoginError] = useState('');
             
             const [projects, setProjects] = useState([]);
-            const [users, setUsers] = useState([
-                {id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@montecarlo.com', password: 'admin123', role: 'admin'},
-                {id: 2, firstName: 'Analyst', lastName: 'User', email: 'analyst@montecarlo.com', password: 'analyst123', role: 'analyst'}
-            ]);
+            const [users, setUsers] = useState([]);
             const [reports, setReports] = useState([]);
             const [deletedReports, setDeletedReports] = useState([]);
             const [newProject, setNewProject] = useState({name: '', description: '', status: 'active'});
@@ -39,6 +36,51 @@
             const [searchProject, setSearchProject] = useState('');
             const [searchDate, setSearchDate] = useState('');
             const [viewingReport, setViewingReport] = useState(null);
+            
+            // Load data from API
+            useEffect(() => {
+                if (user) {
+                    loadProjects();
+                    loadUsers();
+                    loadReports();
+                }
+            }, [user]);
+            
+            const loadProjects = async () => {
+                try {
+                    const response = await fetch('/api/projects');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setProjects(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading projects:', error);
+                }
+            };
+            
+            const loadUsers = async () => {
+                try {
+                    const response = await fetch('/api/users');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setUsers(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading users:', error);
+                }
+            };
+            
+            const loadReports = async () => {
+                try {
+                    const response = await fetch('/api/reports');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setReports(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading reports:', error);
+                }
+            };
             
             // Función para ejecutar simulación Monte Carlo
             const executeMonteCarloSimulation = (variables, config) => {
@@ -115,7 +157,6 @@
                     histogram[binIndex]++;
                 });
                 
-                // Generar curva de densidad (aproximación)
                 const densityCurve = histogram.map((count, i) => ({
                     x: metrics.min + (i + 0.5) * binSize,
                     y: count / (results.length * binSize)
@@ -134,23 +175,41 @@
                 setViewingReport(report);
             };
             
-            const deleteReport = (reportId) => {
-                const report = reports.find(r => r.id === reportId);
-                if (report) {
-                    const deletedReport = {...report, deletedAt: new Date().toISOString()};
-                    setDeletedReports([...deletedReports, deletedReport]);
-                    setReports(reports.filter(r => r.id !== reportId));
-                    alert('Reporte eliminado. Tienes 24 horas para recuperarlo.');
+            const deleteReport = async (reportId) => {
+                try {
+                    const response = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        const report = reports.find(r => r.id === reportId);
+                        if (report) {
+                            const deletedReport = {...report, deletedAt: new Date().toISOString()};
+                            setDeletedReports([...deletedReports, deletedReport]);
+                            setReports(reports.filter(r => r.id !== reportId));
+                            alert('Reporte eliminado. Tienes 24 horas para recuperarlo.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error deleting report:', error);
                 }
             };
             
-            const recoverReport = (reportId) => {
-                const report = deletedReports.find(r => r.id === reportId);
-                if (report) {
-                    const { deletedAt, ...cleanReport } = report;
-                    setReports([...reports, cleanReport]);
-                    setDeletedReports(deletedReports.filter(r => r.id !== reportId));
-                    alert('Reporte recuperado exitosamente.');
+            const recoverReport = async (reportId) => {
+                try {
+                    const report = deletedReports.find(r => r.id === reportId);
+                    if (report) {
+                        const { deletedAt, ...cleanReport } = report;
+                        const response = await fetch('/api/reports', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(cleanReport)
+                        });
+                        if (response.ok) {
+                            setReports([...reports, cleanReport]);
+                            setDeletedReports(deletedReports.filter(r => r.id !== reportId));
+                            alert('Reporte recuperado exitosamente.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error recovering report:', error);
                 }
             };
             
@@ -170,37 +229,29 @@
                 setLoginData({email: '', password: ''});
             };
             
-            const downloadReport = (report, format) => {
-                const content = generateReportContent(report, format);
-                const blob = new Blob([content], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${report.name}.${format}`;
-                a.click();
-                URL.revokeObjectURL(url);
-            };
-            
-            const generateReportContent = (report, format) => {
-                const { project, date, variables, config, results, charts } = report;
-                
-                return `REPORTE DE SIMULACIÓN MONTE CARLO\n\n` +
-                    `Proyecto: ${project}\n` +
-                    `Fecha: ${date}\n` +
-                    `Iteraciones: ${config.iterations}\n\n` +
-                    `VARIABLES CONFIGURADAS:\n` +
-                    variables.map(v => `- ${v.name}: ${v.type} (${v.distribution})`).join('\n') + '\n\n' +
-                    `RESULTADOS:\n` +
-                    `- Promedio: ${results.metrics.average.toFixed(2)}\n` +
-                    `- Desviación Estándar: ${results.metrics.stdDev.toFixed(2)}\n` +
-                    `- Mínimo: ${results.metrics.min.toFixed(2)}\n` +
-                    `- Máximo: ${results.metrics.max.toFixed(2)}\n` +
-                    `- Percentil 50: ${results.metrics.p50.toFixed(2)}\n` +
-                    `- Percentil 90: ${results.metrics.p90.toFixed(2)}\n\n` +
-                    `HISTOGRAMA:\n` +
-                    charts.histogram.labels.map((label, i) => `${label}: ${charts.histogram.bins[i]} casos`).join('\n') + '\n\n' +
-                    `CURVA DE DENSIDAD:\n` +
-                    charts.densityCurve.map(point => `x: ${point.x.toFixed(2)}, densidad: ${point.y.toFixed(4)}`).join('\n');
+            const downloadReport = async (report, format) => {
+                try {
+                    const response = await fetch(`/api/reports/${report.id}/download`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ format })
+                    });
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${report.name}.${format}`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    } else {
+                        alert('Error generando el documento');
+                    }
+                } catch (error) {
+                    console.error('Error downloading report:', error);
+                    alert('Error descargando el reporte');
+                }
             };
             
             // Limpiar reportes eliminados después de 24 horas
@@ -212,16 +263,22 @@
                         const hoursDiff = (now - deletedTime) / (1000 * 60 * 60);
                         return hoursDiff < 24;
                     }));
-                }, 60000); // Verificar cada minuto
+                }, 60000);
                 
                 return () => clearInterval(interval);
             }, []);
             
             const handleLogin = async () => {
                 try {
-                    const foundUser = users.find(u => u.email === loginData.email && u.password === loginData.password);
-                    if (foundUser) {
-                        setUser(foundUser);
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(loginData)
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        setUser(userData);
                         setCurrentPage('reportes');
                         setLoginError('');
                     } else {
@@ -232,6 +289,128 @@
                 }
             };
             
+            const createProject = async () => {
+                if (!newProject.name) return;
+                
+                try {
+                    const response = await fetch('/api/projects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({...newProject, responsibleUser: user?.id})
+                    });
+                    
+                    if (response.ok) {
+                        const project = await response.json();
+                        setProjects([...projects, project]);
+                        setNewProject({name: '', description: '', status: 'active'});
+                    }
+                } catch (error) {
+                    console.error('Error creating project:', error);
+                }
+            };
+            
+            const deleteProject = async (projectId) => {
+                try {
+                    const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        setProjects(projects.filter(p => p.id !== projectId));
+                    }
+                } catch (error) {
+                    console.error('Error deleting project:', error);
+                }
+            };
+            
+            const createUser = async () => {
+                if (!newUser.firstName || !newUser.email || !newUser.password) return;
+                
+                try {
+                    const response = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newUser)
+                    });
+                    
+                    if (response.ok) {
+                        const user = await response.json();
+                        setUsers([...users, user]);
+                        setNewUser({firstName: '', lastName: '', email: '', password: '', role: 'analyst'});
+                    }
+                } catch (error) {
+                    console.error('Error creating user:', error);
+                }
+            };
+            
+            const updateUser = async () => {
+                if (!editingUser) return;
+                
+                try {
+                    const response = await fetch(`/api/users/${editingUser.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(editingUser)
+                    });
+                    
+                    if (response.ok) {
+                        const updatedUser = await response.json();
+                        setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+                        setEditingUser(null);
+                    }
+                } catch (error) {
+                    console.error('Error updating user:', error);
+                }
+            };
+            
+            const deleteUser = async (userId) => {
+                try {
+                    const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        setUsers(users.filter(u => u.id !== userId));
+                    }
+                } catch (error) {
+                    console.error('Error deleting user:', error);
+                }
+            };
+            
+            const changePassword = async () => {
+                if (!changingPassword || !newPassword) return;
+                
+                try {
+                    const response = await fetch(`/api/users/${changingPassword.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({...changingPassword, password: newPassword})
+                    });
+                    
+                    if (response.ok) {
+                        const updatedUser = await response.json();
+                        setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+                        setChangingPassword(null);
+                        setNewPassword('');
+                        alert('Contraseña actualizada exitosamente');
+                    }
+                } catch (error) {
+                    console.error('Error changing password:', error);
+                }
+            };
+            
+            const saveReport = async (reportData) => {
+                try {
+                    const response = await fetch('/api/reports', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reportData)
+                    });
+                    
+                    if (response.ok) {
+                        const report = await response.json();
+                        setReports([...reports, report]);
+                        return report;
+                    }
+                } catch (error) {
+                    console.error('Error saving report:', error);
+                }
+            };
+            
             const LoginPage = () => (
                 React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
@@ -239,8 +418,7 @@
                             React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '📊∑ Monte Carlo'),
                             React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación'),
                             React.createElement('div', { className: 'mt-4 text-sm text-gray-500' },
-                                React.createElement('p', null, 'Demo: admin@montecarlo.com / admin123'),
-                                React.createElement('p', null, 'Demo: analyst@montecarlo.com / analyst123')
+                                React.createElement('p', null, 'Ingrese sus credenciales para acceder')
                             )
                         ),
                         loginError && React.createElement('div', { className: 'bg-red-100 text-red-700 p-3 rounded mb-4' }, loginError),
@@ -319,7 +497,6 @@
                             )
                         ),
                         
-                        // Reportes eliminados (papelera de reciclaje)
                         deletedReports.length > 0 && React.createElement('div', { className: 'bg-yellow-50 p-4 rounded-xl shadow mb-6' },
                             React.createElement('h3', { className: 'font-semibold mb-3 text-yellow-800' }, '🗑️ Reportes Eliminados (Recuperables por 24h)'),
                             React.createElement('div', { className: 'space-y-2' },
@@ -350,8 +527,8 @@
                                 React.createElement('tbody', null,
                                     reports.map(report => 
                                         React.createElement('tr', { key: report.id, className: 'border-t' },
-                                            React.createElement('td', { className: 'p-4' }, report.project),
-                                            React.createElement('td', { className: 'p-4' }, report.date),
+                                            React.createElement('td', { className: 'p-4' }, report.project || report.projectName),
+                                            React.createElement('td', { className: 'p-4' }, report.date || new Date(report.createdAt).toLocaleDateString()),
                                             React.createElement('td', { className: 'p-4' }, report.name),
                                             React.createElement('td', { className: 'p-4 space-x-2' },
                                                 React.createElement('button', {
@@ -377,7 +554,6 @@
                             )
                         ),
                         
-                        // Modal para ver reporte detallado con curvas de densidad
                         viewingReport && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
                             React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-auto' },
                                 React.createElement('div', { className: 'flex justify-between items-center mb-6' },
@@ -391,81 +567,18 @@
                                 React.createElement('div', { className: 'grid grid-cols-2 gap-6' },
                                     React.createElement('div', { className: 'bg-gray-50 p-4 rounded' },
                                         React.createElement('h3', { className: 'font-semibold mb-3' }, 'Información del Proyecto'),
-                                        React.createElement('p', null, `Proyecto: ${viewingReport.project}`),
-                                        React.createElement('p', null, `Fecha: ${viewingReport.date}`),
-                                        React.createElement('p', null, `Iteraciones: ${viewingReport.config.iterations}`),
-                                        React.createElement('p', null, `Variables: ${viewingReport.variables.length}`)
+                                        React.createElement('p', null, `Proyecto: ${viewingReport.project || viewingReport.projectName}`),
+                                        React.createElement('p', null, `Fecha: ${viewingReport.date || new Date(viewingReport.createdAt).toLocaleDateString()}`),
+                                        React.createElement('p', null, `Iteraciones: ${viewingReport.config?.iterations || 'N/A'}`),
+                                        React.createElement('p', null, `Variables: ${viewingReport.variables?.length || 'N/A'}`)
                                     ),
                                     
                                     React.createElement('div', { className: 'bg-blue-50 p-4 rounded' },
                                         React.createElement('h3', { className: 'font-semibold mb-3' }, 'Métricas Principales'),
-                                        React.createElement('p', null, `Promedio: ${viewingReport.results.metrics.average.toFixed(2)}`),
-                                        React.createElement('p', null, `Desviación: ${viewingReport.results.metrics.stdDev.toFixed(2)}`),
-                                        React.createElement('p', null, `Mínimo: ${viewingReport.results.metrics.min.toFixed(2)}`),
-                                        React.createElement('p', null, `Máximo: ${viewingReport.results.metrics.max.toFixed(2)}`)
-                                    )
-                                ),
-                                
-                                React.createElement('div', { className: 'mt-6' },
-                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Variables Configuradas'),
-                                    React.createElement('div', { className: 'grid grid-cols-3 gap-4' },
-                                        viewingReport.variables.map(variable => 
-                                            React.createElement('div', { key: variable.id, className: 'border p-3 rounded' },
-                                                React.createElement('p', { className: 'font-medium' }, variable.name),
-                                                React.createElement('p', { className: 'text-sm text-gray-600' }, `${variable.type} - ${variable.distribution}`)
-                                            )
-                                        )
-                                    )
-                                ),
-                                
-                                React.createElement('div', { className: 'mt-6' },
-                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Histograma de Distribución'),
-                                    React.createElement('div', { className: 'bg-gray-50 p-4 rounded' },
-                                        React.createElement('div', { className: 'flex items-end space-x-1 h-40' },
-                                            viewingReport.charts.histogram.bins.map((count, i) => {
-                                                const maxCount = Math.max(...viewingReport.charts.histogram.bins);
-                                                const height = (count / maxCount) * 100;
-                                                return React.createElement('div', {
-                                                    key: i,
-                                                    className: 'bg-blue-500 flex-1 flex items-end justify-center text-white text-xs',
-                                                    style: { height: `${height}%`, minHeight: '20px' },
-                                                    title: `${viewingReport.charts.histogram.labels[i]}: ${count} casos`
-                                                }, count);
-                                            })
-                                        )
-                                    )
-                                ),
-                                
-                                React.createElement('div', { className: 'mt-6' },
-                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Curva de Densidad'),
-                                    React.createElement('div', { className: 'bg-gray-50 p-4 rounded h-40 relative' },
-                                        React.createElement('svg', { className: 'w-full h-full' },
-                                            React.createElement('polyline', {
-                                                points: viewingReport.charts.densityCurve.map((point, i) => {
-                                                    const x = (i / (viewingReport.charts.densityCurve.length - 1)) * 100;
-                                                    const maxY = Math.max(...viewingReport.charts.densityCurve.map(p => p.y));
-                                                    const y = 100 - (point.y / maxY) * 80;
-                                                    return `${x},${y}`;
-                                                }).join(' '),
-                                                fill: 'none',
-                                                stroke: '#ef4444',
-                                                strokeWidth: '2'
-                                            })
-                                        )
-                                    )
-                                ),
-                                
-                                React.createElement('div', { className: 'mt-6' },
-                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Percentiles'),
-                                    React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
-                                        React.createElement('div', { className: 'bg-green-50 p-4 rounded text-center' },
-                                            React.createElement('p', { className: 'text-2xl font-bold text-green-700' }, viewingReport.results.metrics.p50.toFixed(2)),
-                                            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Percentil 50 (Mediana)')
-                                        ),
-                                        React.createElement('div', { className: 'bg-orange-50 p-4 rounded text-center' },
-                                            React.createElement('p', { className: 'text-2xl font-bold text-orange-700' }, viewingReport.results.metrics.p90.toFixed(2)),
-                                            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Percentil 90')
-                                        )
+                                        React.createElement('p', null, `Promedio: ${viewingReport.results?.metrics?.average?.toFixed(2) || 'N/A'}`),
+                                        React.createElement('p', null, `Desviación: ${viewingReport.results?.metrics?.stdDev?.toFixed(2) || 'N/A'}`),
+                                        React.createElement('p', null, `Mínimo: ${viewingReport.results?.metrics?.min?.toFixed(2) || 'N/A'}`),
+                                        React.createElement('p', null, `Máximo: ${viewingReport.results?.metrics?.max?.toFixed(2) || 'N/A'}`)
                                     )
                                 ),
                                 
@@ -516,12 +629,7 @@
                                 )
                             ),
                             React.createElement('button', {
-                                onClick: () => {
-                                    if (newProject.name) {
-                                        setProjects([...projects, {...newProject, id: Date.now(), responsibleUser: user?.id}]);
-                                        setNewProject({name: '', description: '', status: 'active'});
-                                    }
-                                },
+                                onClick: createProject,
                                 className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
                             }, 'Crear Proyecto')
                         ),
@@ -567,7 +675,7 @@
                                                     className: 'bg-purple-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Ver Reporte'),
                                                 React.createElement('button', {
-                                                    onClick: () => setProjects(projects.filter(p => p.id !== project.id)),
+                                                    onClick: () => deleteProject(project.id),
                                                     className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Eliminar')
                                             )
@@ -680,26 +788,32 @@
                                 
                                 React.createElement('div', { className: 'flex gap-4' },
                                     React.createElement('button', {
-                                        onClick: () => {
+                                        onClick: async () => {
                                             if (projectVariables.length > 0) {
                                                 const results = executeMonteCarloSimulation(projectVariables, simulationConfig);
                                                 
-                                                const report = {
-                                                    id: Date.now(),
+                                                const reportData = {
                                                     project: selectedProject.name,
-                                                    date: new Date().toISOString().split('T')[0],
+                                                    projectName: selectedProject.name,
                                                     name: `Reporte ${selectedProject.name} - ${new Date().toLocaleDateString()}`,
                                                     variables: projectVariables,
                                                     config: simulationConfig,
                                                     results: results,
-                                                    charts: generateCharts(results)
+                                                    charts: generateCharts(results),
+                                                    reportData: {
+                                                        variables: projectVariables,
+                                                        config: simulationConfig,
+                                                        results: results,
+                                                        charts: generateCharts(results)
+                                                    }
                                                 };
                                                 
-                                                setReports([...reports, report]);
-                                                
-                                                alert(`Simulación completada:\n- ${results.scenarios.length} escenarios generados\n- Promedio: ${results.metrics.average.toFixed(2)}\n- Desviación: ${results.metrics.stdDev.toFixed(2)}\n\nReporte guardado en la sección Reportes`);
-                                                setSelectedProject(null);
-                                                setProjectVariables([]);
+                                                const savedReport = await saveReport(reportData);
+                                                if (savedReport) {
+                                                    alert(`Simulación completada:\n- ${results.scenarios.length} escenarios generados\n- Promedio: ${results.metrics.average.toFixed(2)}\n- Desviación: ${results.metrics.stdDev.toFixed(2)}\n\nReporte guardado en la sección Reportes`);
+                                                    setSelectedProject(null);
+                                                    setProjectVariables([]);
+                                                }
                                             } else {
                                                 alert('Debe agregar al menos una variable para ejecutar la simulación');
                                             }
@@ -729,7 +843,7 @@
                                 React.createElement('tbody', null,
                                     users.map(user => 
                                         React.createElement('tr', { key: user.id, className: 'border-t' },
-                                            React.createElement('td', { className: 'p-4' }, `${user.firstName} ${user.lastName}`),
+                                            React.createElement('td', { className: 'p-4' }, `${user.firstName} ${user.lastName || ''}`),
                                             React.createElement('td', { className: 'p-4' }, user.email),
                                             React.createElement('td', { className: 'p-4' }, user.role),
                                             React.createElement('td', { className: 'p-4 space-x-2' },
@@ -742,7 +856,7 @@
                                                     className: 'bg-yellow-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Cambiar Contraseña'),
                                                 React.createElement('button', {
-                                                    onClick: () => setUsers(users.filter(u => u.id !== user.id)),
+                                                    onClick: () => deleteUser(user.id),
                                                     className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Eliminar')
                                             )
@@ -752,7 +866,6 @@
                             )
                         ),
                         
-                        // Modal para cambiar contraseña
                         changingPassword && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
                             React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-md' },
                                 React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, `Cambiar Contraseña - ${changingPassword.firstName}`),
@@ -765,14 +878,7 @@
                                 }),
                                 React.createElement('div', { className: 'flex gap-2' },
                                     React.createElement('button', {
-                                        onClick: () => {
-                                            if (newPassword) {
-                                                setUsers(users.map(u => u.id === changingPassword.id ? {...u, password: newPassword} : u));
-                                                setChangingPassword(null);
-                                                setNewPassword('');
-                                                alert('Contraseña actualizada exitosamente');
-                                            }
-                                        },
+                                        onClick: changePassword,
                                         className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
                                     }, 'Actualizar'),
                                     React.createElement('button', {
@@ -830,17 +936,7 @@
                             ),
                             React.createElement('div', { className: 'flex gap-2' },
                                 React.createElement('button', {
-                                    onClick: () => {
-                                        if (editingUser) {
-                                            setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
-                                            setEditingUser(null);
-                                        } else {
-                                            if (newUser.firstName && newUser.email && newUser.password) {
-                                                setUsers([...users, {...newUser, id: Date.now()}]);
-                                                setNewUser({firstName: '', lastName: '', email: '', password: '', role: 'analyst'});
-                                            }
-                                        }
-                                    },
+                                    onClick: editingUser ? updateUser : createUser,
                                     className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
                                 }, editingUser ? 'Actualizar' : 'Crear'),
                                 editingUser && React.createElement('button', {

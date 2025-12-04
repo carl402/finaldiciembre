@@ -4,7 +4,7 @@ import { storage } from "./storage";
 // Auth simplificado para producción
 import { fileProcessor } from "./services/fileProcessor";
 import { telegramService } from "./services/telegramService";
-import { simulationService } from "./services/simulationService";
+// import { simulationService } from "./services/simulationService";
 import multer from "multer";
 import crypto from "crypto";
 import { insertLogSchema, insertErrorSchema } from "@shared/schema";
@@ -283,73 +283,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Projects and simulations
-  app.post('/api/projects', async (req: any, res) => {
+  // Monte Carlo API Routes
+  
+  // Authentication
+  app.post('/api/auth/login', async (req, res) => {
     try {
-      const { name, description, createdBy } = req.body;
-      const project = await storage.createProject({ name, description, createdBy } as any);
+      const { email, password } = req.body;
+      const users = await storage.getAllUsers();
+      const user = users.find(u => u.email === email);
+      
+      if (user && user.password === password) {
+        res.json({ id: user.id, email: user.email, firstName: user.firstName, role: user.role });
+      } else {
+        res.status(401).json({ message: 'Invalid credentials' });
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Login failed' });
+    }
+  });
+  
+  // Projects
+  app.get('/api/projects', async (req, res) => {
+    try {
+      const projects = await storage.getAllProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch projects' });
+    }
+  });
+  
+  app.post('/api/projects', async (req, res) => {
+    try {
+      const project = await storage.createProject(req.body);
       res.json(project);
     } catch (error) {
-      console.error('Error creating project', error);
       res.status(500).json({ message: 'Failed to create project' });
     }
   });
-
-  app.post('/api/simulations', async (req: any, res) => {
+  
+  app.delete('/api/projects/:id', async (req, res) => {
     try {
-      const { projectId, name, iterations, config } = req.body;
-      const sim = await storage.createSimulation({ projectId, name, iterations, config } as any);
-      res.json(sim);
+      await storage.deleteProject(req.params.id);
+      res.json({ message: 'Project deleted' });
     } catch (error) {
-      console.error('Error creating simulation', error);
-      res.status(500).json({ message: 'Failed to create simulation' });
+      res.status(500).json({ message: 'Failed to delete project' });
     }
   });
-
-  app.post('/api/simulations/:id/scenarios', async (req: any, res) => {
+  
+  // Users
+  app.get('/api/users', async (req, res) => {
     try {
-      const simulationId = req.params.id;
-      const { name, variables } = req.body;
-      const sc = await storage.createScenario({ simulationId, name, variables } as any);
-      res.json(sc);
+      const users = await storage.getAllUsers();
+      res.json(users);
     } catch (error) {
-      console.error('Error creating scenario', error);
-      res.status(500).json({ message: 'Failed to create scenario' });
+      res.status(500).json({ message: 'Failed to fetch users' });
     }
   });
-
-  app.post('/api/simulations/:id/run', async (req: any, res) => {
+  
+  app.post('/api/users', async (req, res) => {
     try {
-      const simulationId = req.params.id;
-      const report = await simulationService.runSimulation(simulationId);
-      res.json(report);
+      const user = await storage.createUser(req.body);
+      res.json(user);
     } catch (error) {
-      console.error('Error running simulation', error);
-      res.status(500).json({ message: 'Failed to run simulation', debug: String(error) });
+      res.status(500).json({ message: 'Failed to create user' });
     }
   });
-
-  app.get('/api/reports', async (req: any, res) => {
+  
+  app.put('/api/users/:id', async (req, res) => {
     try {
-      const projectName = req.query.projectName as string;
-      if (!projectName) return res.status(400).json({ message: 'projectName query is required' });
-      const reports = await storage.getReportsByProjectName(projectName);
+      const user = await storage.updateUser(req.params.id, req.body);
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+  
+  app.delete('/api/users/:id', async (req, res) => {
+    try {
+      await storage.deleteUser(req.params.id);
+      res.json({ message: 'User deleted' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete user' });
+    }
+  });
+  
+  // Reports
+  app.get('/api/reports', async (req, res) => {
+    try {
+      const reports = await storage.getAllReports();
       res.json(reports);
     } catch (error) {
-      console.error('Error fetching reports', error);
       res.status(500).json({ message: 'Failed to fetch reports' });
     }
   });
-
-  app.get('/api/reports/:id', async (req: any, res) => {
+  
+  app.post('/api/reports', async (req, res) => {
     try {
-      const id = req.params.id;
-      const report = await storage.getSimulationReportById(id);
-      if (!report) return res.status(404).json({ message: 'Report not found' });
+      const report = await storage.createReport(req.body);
       res.json(report);
     } catch (error) {
-      console.error('Error fetching report', error);
-      res.status(500).json({ message: 'Failed to fetch report' });
+      res.status(500).json({ message: 'Failed to create report' });
+    }
+  });
+  
+  app.delete('/api/reports/:id', async (req, res) => {
+    try {
+      await storage.deleteReport(req.params.id);
+      res.json({ message: 'Report deleted' });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete report' });
+    }
+  });
+  
+  // PDF Generation
+  app.post('/api/reports/:id/download', async (req, res) => {
+    try {
+      const { format } = req.body;
+      const report = await storage.getReportById(req.params.id);
+      
+      if (!report) {
+        return res.status(404).json({ message: 'Report not found' });
+      }
+      
+      if (format === 'pdf') {
+        // Generate proper PDF
+        const PDFDocument = require('pdfkit');
+        const doc = new PDFDocument();
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${report.name}.pdf"`);
+        
+        doc.pipe(res);
+        
+        // PDF Content
+        doc.fontSize(20).text('REPORTE DE SIMULACIÓN MONTE CARLO', 50, 50);
+        doc.fontSize(12).text(`Proyecto: ${report.project}`, 50, 100);
+        doc.text(`Fecha: ${report.date}`, 50, 120);
+        doc.text(`Iteraciones: ${report.config?.iterations || 'N/A'}`, 50, 140);
+        
+        // Add metrics
+        if (report.results?.metrics) {
+          doc.text('MÉTRICAS:', 50, 180);
+          doc.text(`Promedio: ${report.results.metrics.average?.toFixed(2)}`, 70, 200);
+          doc.text(`Desviación: ${report.results.metrics.stdDev?.toFixed(2)}`, 70, 220);
+          doc.text(`Mínimo: ${report.results.metrics.min?.toFixed(2)}`, 70, 240);
+          doc.text(`Máximo: ${report.results.metrics.max?.toFixed(2)}`, 70, 260);
+        }
+        
+        doc.end();
+      } else {
+        // Generate proper DOC (RTF format)
+        const content = `{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}` +
+          `\\f0\\fs24 REPORTE DE SIMULACIÓN MONTE CARLO\\par` +
+          `\\fs20 Proyecto: ${report.project}\\par` +
+          `Fecha: ${report.date}\\par` +
+          `Iteraciones: ${report.config?.iterations || 'N/A'}\\par\\par` +
+          `MÉTRICAS:\\par` +
+          `Promedio: ${report.results?.metrics?.average?.toFixed(2) || 'N/A'}\\par` +
+          `Desviación: ${report.results?.metrics?.stdDev?.toFixed(2) || 'N/A'}\\par` +
+          `}`;
+        
+        res.setHeader('Content-Type', 'application/msword');
+        res.setHeader('Content-Disposition', `attachment; filename="${report.name}.doc"`);
+        res.send(content);
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to generate document' });
     }
   });
 

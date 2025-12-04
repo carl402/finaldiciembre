@@ -329,6 +329,49 @@ export class DatabaseStorage implements IStorage {
     const [r] = await db.select().from(simulationReports).where(eq(simulationReports.id, id));
     return r;
   }
+
+  // Monte Carlo specific methods
+  async getAllProjects(): Promise<any[]> {
+    const result = await db.select().from(projects).orderBy(desc(projects.createdAt));
+    return Array.isArray(result) ? result : [];
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    await db.delete(projects).where(eq(projects.id, id));
+  }
+
+  async createUser(userData: any): Promise<any> {
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async updateUser(id: string, userData: any): Promise<any> {
+    const [user] = await db.update(users).set({...userData, updatedAt: new Date()}).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getAllReports(): Promise<any[]> {
+    const result = await db.select().from(simulationReports).orderBy(desc(simulationReports.createdAt));
+    return Array.isArray(result) ? result : [];
+  }
+
+  async createReport(reportData: any): Promise<any> {
+    const [report] = await db.insert(simulationReports).values(reportData).returning();
+    return report;
+  }
+
+  async getReportById(id: string): Promise<any> {
+    const [report] = await db.select().from(simulationReports).where(eq(simulationReports.id, id));
+    return report;
+  }
+
+  async deleteReport(id: string): Promise<void> {
+    await db.delete(simulationReports).where(eq(simulationReports.id, id));
+  }
 }
 
 export const storage = new DatabaseStorage();
