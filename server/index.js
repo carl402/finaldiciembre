@@ -50,7 +50,7 @@ async function startServer() {
         app.use(express.static(clientDistPath));
         
         // Catch-all para SPA routing
-        app.get('*', (req, res) => {
+        app.get('*', (req, res, next) => {
           if (req.path.startsWith('/api/') || req.path === '/health') {
             return next();
           }
@@ -58,16 +58,24 @@ async function startServer() {
           if (fs.existsSync(indexPath)) {
             res.sendFile(indexPath);
           } else {
-            res.status(404).send('Client not built');
+            res.send(`
+              <h1>Take a Look - Building...</h1>
+              <p>El cliente se está construyendo. Recarga en unos minutos.</p>
+              <p><a href="/health">Health Check</a> | <a href="/api/auth/user">API Test</a></p>
+            `);
           }
         });
       } else {
         // Fallback si no hay cliente buildado
-        app.get('/', (req, res) => {
+        app.get('*', (req, res, next) => {
+          if (req.path.startsWith('/api/') || req.path === '/health') {
+            return next();
+          }
           res.send(`
             <h1>Take a Look System</h1>
-            <p>Cliente no encontrado. Ejecuta: npm run build</p>
-            <p><a href="/health">Health Check</a></p>
+            <p>Cliente no encontrado. El build puede estar en progreso.</p>
+            <p><a href="/health">Health Check</a> | <a href="/api/auth/user">API Test</a></p>
+            <script>setTimeout(() => location.reload(), 30000);</script>
           `);
         });
       }
