@@ -415,7 +415,7 @@
                 React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
                         React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '📊∑ Monte Carlo'),
+                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '∑onte Carlo'),
                             React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación'),
                             React.createElement('div', { className: 'mt-4 text-sm text-gray-500' },
                                 React.createElement('p', null, 'Ingrese sus credenciales para acceder')
@@ -428,6 +428,8 @@
                                 placeholder: 'Email',
                                 value: loginData.email,
                                 onChange: (e) => setLoginData({...loginData, email: e.target.value}),
+                                onInput: (e) => setLoginData({...loginData, email: e.target.value}),
+                                autoComplete: 'email',
                                 className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
                             }),
                             React.createElement('input', {
@@ -435,6 +437,8 @@
                                 placeholder: 'Contraseña',
                                 value: loginData.password,
                                 onChange: (e) => setLoginData({...loginData, password: e.target.value}),
+                                onInput: (e) => setLoginData({...loginData, password: e.target.value}),
+                                autoComplete: 'current-password',
                                 className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
                             }),
                             React.createElement('button', {
@@ -449,7 +453,7 @@
             const Sidebar = () => (
                 React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
                     React.createElement('div', { className: 'p-6 border-b' },
-                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '📊∑ Monte Carlo'),
+                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '∑onte Carlo'),
                         React.createElement('p', { className: 'text-sm text-gray-600' }, `Bienvenido, ${user?.firstName}`)
                     ),
                     React.createElement('nav', { className: 'p-4 space-y-2' },
