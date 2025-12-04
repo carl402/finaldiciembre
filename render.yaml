@@ -3,7 +3,7 @@ services:
     name: take-a-look
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install
     startCommand: node index.js
     envVars:
       - key: NODE_ENV

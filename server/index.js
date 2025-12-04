@@ -40,10 +40,41 @@ async function startServer() {
       });
     });
     
-    // Servir archivos estáticos en producción
-    if (process.env.NODE_ENV === 'production') {
-      app.use(express.static(path.join(__dirname, '../client/dist')));
-    }
+    // Servir archivos estáticos básicos
+    app.get('/', (req, res) => {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Take a Look - Log Analysis System</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #333; text-align: center; }
+            .status { background: #e8f5e8; padding: 20px; border-radius: 4px; margin: 20px 0; }
+            .api-list { background: #f8f9fa; padding: 20px; border-radius: 4px; }
+            .endpoint { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚀 Take a Look System</h1>
+            <div class="status">
+              <h3>✅ Sistema Operativo</h3>
+              <p>El servidor está funcionando correctamente.</p>
+            </div>
+            <div class="api-list">
+              <h3>📡 API Endpoints Disponibles:</h3>
+              <div class="endpoint"><strong>GET /health</strong> - Health check</div>
+              <div class="endpoint"><strong>GET /api/auth/user</strong> - Usuario demo</div>
+              <div class="endpoint"><strong>GET /api/logs</strong> - Lista de logs</div>
+              <div class="endpoint"><strong>GET /api/dashboard/stats</strong> - Estadísticas</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    });
     
     // Health check
     app.get('/health', async (req, res) => {
@@ -120,12 +151,7 @@ async function startServer() {
       }
     });
     
-    // Catch-all para SPA
-    if (process.env.NODE_ENV === 'production') {
-      app.get('/', (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-      });
-    }
+
     
     // Configurar puerto
     const port = parseInt(process.env.PORT || '5001', 10);
