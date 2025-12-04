@@ -17,43 +17,74 @@
         function App() {
             const [currentPage, setCurrentPage] = useState('login');
             const [user, setUser] = useState(null);
-            const [stats, setStats] = useState({ totalFiles: 0, totalErrors: 0, successRate: 100 });
+            const [loginData, setLoginData] = useState({email: '', password: ''});
+            const [loginError, setLoginError] = useState('');
             
-            useEffect(() => {
-                fetch('/api/auth/user')
-                    .then(r => r.json())
-                    .then(u => {
-                        setUser(u);
-                        if (currentPage === 'login') setCurrentPage('dashboard');
-                    })
-                    .catch(() => {});
-                    
-                fetch('/api/dashboard/stats')
-                    .then(r => r.json())
-                    .then(s => setStats(s))
-                    .catch(() => {});
-            }, []);
+            const [projects, setProjects] = useState([]);
+            const [users, setUsers] = useState([
+                {id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@montecarlo.com', role: 'admin'},
+                {id: 2, firstName: 'Analyst', lastName: 'User', email: 'analyst@montecarlo.com', role: 'analyst'}
+            ]);
+            const [reports, setReports] = useState([
+                {id: 1, project: 'Proyecto Demo', date: '2024-01-15', name: 'Reporte Simulación Monte Carlo'}
+            ]);
+            const [newProject, setNewProject] = useState({name: '', description: '', status: 'active'});
+            const [selectedProject, setSelectedProject] = useState(null);
+            const [projectVariables, setProjectVariables] = useState([]);
+            const [newVariable, setNewVariable] = useState({name: '', type: 'continua', distribution: 'normal', parameters: {}});
+            const [simulationConfig, setSimulationConfig] = useState({iterations: 1000, randomSeed: null});
+            const [newUser, setNewUser] = useState({firstName: '', lastName: '', email: '', password: '', role: 'analyst'});
+            const [editingUser, setEditingUser] = useState(null);
+            const [searchProject, setSearchProject] = useState('');
+            const [searchDate, setSearchDate] = useState('');
+            
+            const handleLogin = async () => {
+                try {
+                    if (loginData.email === 'admin@montecarlo.com' && loginData.password === 'admin123') {
+                        setUser({id: 1, email: 'admin@montecarlo.com', firstName: 'Admin', role: 'admin'});
+                        setCurrentPage('reportes');
+                        setLoginError('');
+                    } else if (loginData.email === 'analyst@montecarlo.com' && loginData.password === 'analyst123') {
+                        setUser({id: 2, email: 'analyst@montecarlo.com', firstName: 'Analyst', role: 'analyst'});
+                        setCurrentPage('reportes');
+                        setLoginError('');
+                    } else {
+                        setLoginError('Credenciales inválidas');
+                    }
+                } catch (error) {
+                    setLoginError('Error de conexión');
+                }
+            };
             
             const LoginPage = () => (
                 React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
                         React.createElement('div', { className: 'text-center mb-8' },
                             React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '🎲 Monte Carlo'),
-                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación')
+                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación'),
+                            React.createElement('div', { className: 'mt-4 text-sm text-gray-500' },
+                                React.createElement('p', null, 'Demo: admin@montecarlo.com / admin123'),
+                                React.createElement('p', null, 'Demo: analyst@montecarlo.com / analyst123')
+                            )
                         ),
+                        loginError && React.createElement('div', { className: 'bg-red-100 text-red-700 p-3 rounded mb-4' }, loginError),
                         React.createElement('div', { className: 'space-y-4' },
                             React.createElement('input', {
-                                type: 'text',
-                                placeholder: 'Usuario',
+                                type: 'email',
+                                placeholder: 'Email',
+                                value: loginData.email,
+                                onChange: (e) => setLoginData({...loginData, email: e.target.value}),
                                 className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
                             }),
                             React.createElement('input', {
                                 type: 'password',
                                 placeholder: 'Contraseña',
+                                value: loginData.password,
+                                onChange: (e) => setLoginData({...loginData, password: e.target.value}),
                                 className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
                             }),
                             React.createElement('button', {
-                                onClick: () => setCurrentPage('dashboard'),
+                                onClick: handleLogin,
                                 className: 'w-full bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 font-semibold'
                             }, 'Iniciar Sesión')
                         )
@@ -64,7 +95,8 @@
             const Sidebar = () => (
                 React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
                     React.createElement('div', { className: 'p-6 border-b' },
-                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🎲 Monte Carlo')
+                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🎲 Monte Carlo'),
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, `Bienvenido, ${user?.firstName}`)
                     ),
                     React.createElement('nav', { className: 'p-4 space-y-2' },
                         ['reportes', 'proyectos', 'users', 'settings'].map(page => 
@@ -80,15 +112,6 @@
                     )
                 )
             );
-            
-            const [projects, setProjects] = useState([]);
-            const [users, setUsers] = useState([{id: 1, name: 'Demo User', email: 'demo@example.com', role: 'Admin'}]);
-            const [reports, setReports] = useState([{id: 1, project: 'Proyecto A', date: '2024-01-15', name: 'Reporte Simulación 1'}]);
-            const [newProject, setNewProject] = useState('');
-            const [newUser, setNewUser] = useState({name: '', email: '', role: 'User'});
-            const [editingUser, setEditingUser] = useState(null);
-            const [searchProject, setSearchProject] = useState('');
-            const [searchDate, setSearchDate] = useState('');
             
             if (currentPage === 'login') {
                 return React.createElement(LoginPage);
@@ -146,40 +169,215 @@
                         )
                     ),
                     currentPage === 'proyectos' && React.createElement('div', null,
-                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Proyectos'),
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Proyectos Monte Carlo'),
+                        
+                        // Crear nuevo proyecto
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow mb-6' },
-                            React.createElement('div', { className: 'flex gap-4 mb-4' },
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Crear Nuevo Proyecto'),
+                            React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
                                 React.createElement('input', {
                                     type: 'text',
                                     placeholder: 'Nombre del proyecto',
-                                    value: newProject,
-                                    onChange: (e) => setNewProject(e.target.value),
-                                    className: 'flex-1 p-2 border rounded'
+                                    value: newProject.name,
+                                    onChange: (e) => setNewProject({...newProject, name: e.target.value}),
+                                    className: 'p-2 border rounded'
                                 }),
-                                React.createElement('button', {
-                                    onClick: () => {
-                                        if (newProject) {
-                                            setProjects([...projects, {id: Date.now(), name: newProject}]);
-                                            setNewProject('');
-                                        }
-                                    },
-                                    className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
-                                }, 'Crear Proyecto')
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Descripción',
+                                    value: newProject.description,
+                                    onChange: (e) => setNewProject({...newProject, description: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                }),
+                                React.createElement('select', {
+                                    value: newProject.status,
+                                    onChange: (e) => setNewProject({...newProject, status: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                },
+                                    React.createElement('option', { value: 'active' }, 'Activo'),
+                                    React.createElement('option', { value: 'inactive' }, 'Inactivo')
+                                )
                             ),
-                            React.createElement('input', {
-                                type: 'text',
-                                placeholder: 'Buscar proyectos...',
-                                className: 'w-full p-2 border rounded'
-                            })
+                            React.createElement('button', {
+                                onClick: () => {
+                                    if (newProject.name) {
+                                        setProjects([...projects, {...newProject, id: Date.now(), responsibleUser: user?.id}]);
+                                        setNewProject({name: '', description: '', status: 'active'});
+                                    }
+                                },
+                                className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+                            }, 'Crear Proyecto')
                         ),
-                        React.createElement('div', { className: 'grid gap-4' },
-                            projects.map(project => 
-                                React.createElement('div', { key: project.id, className: 'bg-white p-4 rounded-xl shadow flex justify-between items-center' },
-                                    React.createElement('span', { className: 'font-semibold' }, project.name),
+                        
+                        // Lista de proyectos
+                        React.createElement('div', { className: 'bg-white rounded-xl shadow' },
+                            React.createElement('div', { className: 'p-4 border-b' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Buscar proyectos...',
+                                    value: searchProject,
+                                    onChange: (e) => setSearchProject(e.target.value),
+                                    className: 'w-full p-2 border rounded'
+                                })
+                            ),
+                            React.createElement('table', { className: 'w-full' },
+                                React.createElement('thead', { className: 'bg-gray-50' },
+                                    React.createElement('tr', null,
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Nombre'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Descripción'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Estado'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Variables'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Acciones')
+                                    )
+                                ),
+                                React.createElement('tbody', null,
+                                    projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(project => 
+                                        React.createElement('tr', { key: project.id, className: 'border-t' },
+                                            React.createElement('td', { className: 'p-4 font-semibold' }, project.name),
+                                            React.createElement('td', { className: 'p-4' }, project.description || 'Sin descripción'),
+                                            React.createElement('td', { className: 'p-4' },
+                                                React.createElement('span', {
+                                                    className: `px-2 py-1 rounded text-sm ${project.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
+                                                }, project.status === 'active' ? 'Activo' : 'Inactivo')
+                                            ),
+                                            React.createElement('td', { className: 'p-4' }, '0 variables'),
+                                            React.createElement('td', { className: 'p-4 space-x-2' },
+                                                React.createElement('button', {
+                                                    onClick: () => setSelectedProject(project),
+                                                    className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Configurar'),
+                                                React.createElement('button', {
+                                                    onClick: () => setProjects(projects.filter(p => p.id !== project.id)),
+                                                    className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Eliminar')
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        
+                        // Modal de configuración de proyecto
+                        selectedProject && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
+                            React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-4xl max-h-screen overflow-auto' },
+                                React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                                    React.createElement('h2', { className: 'text-2xl font-bold' }, `Configurar: ${selectedProject.name}`),
                                     React.createElement('button', {
-                                        onClick: () => setProjects(projects.filter(p => p.id !== project.id)),
-                                        className: 'bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700'
-                                    }, 'Eliminar')
+                                        onClick: () => setSelectedProject(null),
+                                        className: 'text-gray-500 hover:text-gray-700 text-2xl'
+                                    }, '×')
+                                ),
+                                
+                                // Variables del proyecto
+                                React.createElement('div', { className: 'mb-6' },
+                                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Variables del Proyecto'),
+                                    React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-4' },
+                                        React.createElement('input', {
+                                            type: 'text',
+                                            placeholder: 'Nombre variable',
+                                            value: newVariable.name,
+                                            onChange: (e) => setNewVariable({...newVariable, name: e.target.value}),
+                                            className: 'p-2 border rounded'
+                                        }),
+                                        React.createElement('select', {
+                                            value: newVariable.type,
+                                            onChange: (e) => setNewVariable({...newVariable, type: e.target.value}),
+                                            className: 'p-2 border rounded'
+                                        },
+                                            React.createElement('option', { value: 'continua' }, 'Continua'),
+                                            React.createElement('option', { value: 'discreta' }, 'Discreta')
+                                        ),
+                                        React.createElement('select', {
+                                            value: newVariable.distribution,
+                                            onChange: (e) => setNewVariable({...newVariable, distribution: e.target.value}),
+                                            className: 'p-2 border rounded'
+                                        },
+                                            React.createElement('option', { value: 'normal' }, 'Normal'),
+                                            React.createElement('option', { value: 'uniforme' }, 'Uniforme'),
+                                            React.createElement('option', { value: 'triangular' }, 'Triangular')
+                                        ),
+                                        React.createElement('button', {
+                                            onClick: () => {
+                                                if (newVariable.name) {
+                                                    setProjectVariables([...projectVariables, {...newVariable, id: Date.now()}]);
+                                                    setNewVariable({name: '', type: 'continua', distribution: 'normal', parameters: {}});
+                                                }
+                                            },
+                                            className: 'bg-green-600 text-white px-4 py-2 rounded'
+                                        }, 'Agregar')
+                                    ),
+                                    
+                                    // Lista de variables
+                                    projectVariables.length > 0 && React.createElement('div', { className: 'border rounded' },
+                                        React.createElement('table', { className: 'w-full' },
+                                            React.createElement('thead', { className: 'bg-gray-50' },
+                                                React.createElement('tr', null,
+                                                    React.createElement('th', { className: 'p-2 text-left' }, 'Variable'),
+                                                    React.createElement('th', { className: 'p-2 text-left' }, 'Tipo'),
+                                                    React.createElement('th', { className: 'p-2 text-left' }, 'Distribución'),
+                                                    React.createElement('th', { className: 'p-2 text-left' }, 'Acciones')
+                                                )
+                                            ),
+                                            React.createElement('tbody', null,
+                                                projectVariables.map(variable => 
+                                                    React.createElement('tr', { key: variable.id, className: 'border-t' },
+                                                        React.createElement('td', { className: 'p-2' }, variable.name),
+                                                        React.createElement('td', { className: 'p-2' }, variable.type),
+                                                        React.createElement('td', { className: 'p-2' }, variable.distribution),
+                                                        React.createElement('td', { className: 'p-2' },
+                                                            React.createElement('button', {
+                                                                onClick: () => setProjectVariables(projectVariables.filter(v => v.id !== variable.id)),
+                                                                className: 'bg-red-600 text-white px-2 py-1 rounded text-sm'
+                                                            }, 'Eliminar')
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                ),
+                                
+                                // Configuración de simulación
+                                React.createElement('div', { className: 'mb-6' },
+                                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Configuración de Simulación'),
+                                    React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                                        React.createElement('div', null,
+                                            React.createElement('label', { className: 'block text-sm font-medium mb-2' }, 'Número de Iteraciones'),
+                                            React.createElement('input', {
+                                                type: 'number',
+                                                value: simulationConfig.iterations,
+                                                onChange: (e) => setSimulationConfig({...simulationConfig, iterations: parseInt(e.target.value)}),
+                                                className: 'w-full p-2 border rounded'
+                                            })
+                                        ),
+                                        React.createElement('div', null,
+                                            React.createElement('label', { className: 'block text-sm font-medium mb-2' }, 'Semilla Aleatoria (opcional)'),
+                                            React.createElement('input', {
+                                                type: 'number',
+                                                value: simulationConfig.randomSeed || '',
+                                                onChange: (e) => setSimulationConfig({...simulationConfig, randomSeed: e.target.value ? parseInt(e.target.value) : null}),
+                                                className: 'w-full p-2 border rounded'
+                                            })
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'flex gap-4' },
+                                    React.createElement('button', {
+                                        onClick: () => {
+                                            if (projectVariables.length > 0) {
+                                                alert('Simulación iniciada con ' + projectVariables.length + ' variables y ' + simulationConfig.iterations + ' iteraciones');
+                                                setSelectedProject(null);
+                                            } else {
+                                                alert('Debe agregar al menos una variable para ejecutar la simulación');
+                                            }
+                                        },
+                                        className: 'bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700'
+                                    }, 'Ejecutar Simulación'),
+                                    React.createElement('button', {
+                                        onClick: () => setSelectedProject(null),
+                                        className: 'bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700'
+                                    }, 'Cerrar')
                                 )
                             )
                         )
@@ -199,7 +397,7 @@
                                 React.createElement('tbody', null,
                                     users.map(user => 
                                         React.createElement('tr', { key: user.id, className: 'border-t' },
-                                            React.createElement('td', { className: 'p-4' }, user.name),
+                                            React.createElement('td', { className: 'p-4' }, `${user.firstName} ${user.lastName}`),
                                             React.createElement('td', { className: 'p-4' }, user.email),
                                             React.createElement('td', { className: 'p-4' }, user.role),
                                             React.createElement('td', { className: 'p-4 space-x-2' },
@@ -219,14 +417,23 @@
                         ),
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
                             React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, editingUser ? 'Editar Usuario' : 'Crear Usuario'),
-                            React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
+                            React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-4' },
                                 React.createElement('input', {
                                     type: 'text',
                                     placeholder: 'Nombre',
-                                    value: editingUser ? editingUser.name : newUser.name,
-                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, name: e.target.value}) : setNewUser({...newUser, name: e.target.value}),
+                                    value: editingUser ? editingUser.firstName : newUser.firstName,
+                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, firstName: e.target.value}) : setNewUser({...newUser, firstName: e.target.value}),
                                     className: 'p-2 border rounded'
                                 }),
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Apellido',
+                                    value: editingUser ? editingUser.lastName : newUser.lastName,
+                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, lastName: e.target.value}) : setNewUser({...newUser, lastName: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                })
+                            ),
+                            React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
                                 React.createElement('input', {
                                     type: 'email',
                                     placeholder: 'Email',
@@ -234,13 +441,20 @@
                                     onChange: (e) => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value}),
                                     className: 'p-2 border rounded'
                                 }),
+                                !editingUser && React.createElement('input', {
+                                    type: 'password',
+                                    placeholder: 'Contraseña',
+                                    value: newUser.password,
+                                    onChange: (e) => setNewUser({...newUser, password: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                }),
                                 React.createElement('select', {
                                     value: editingUser ? editingUser.role : newUser.role,
                                     onChange: (e) => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value}),
                                     className: 'p-2 border rounded'
                                 },
-                                    React.createElement('option', { value: 'User' }, 'Usuario'),
-                                    React.createElement('option', { value: 'Admin' }, 'Administrador')
+                                    React.createElement('option', { value: 'analyst' }, 'Analista'),
+                                    React.createElement('option', { value: 'admin' }, 'Administrador')
                                 )
                             ),
                             React.createElement('div', { className: 'flex gap-2' },
@@ -250,9 +464,9 @@
                                             setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
                                             setEditingUser(null);
                                         } else {
-                                            if (newUser.name && newUser.email) {
+                                            if (newUser.firstName && newUser.email && newUser.password) {
                                                 setUsers([...users, {...newUser, id: Date.now()}]);
-                                                setNewUser({name: '', email: '', role: 'User'});
+                                                setNewUser({firstName: '', lastName: '', email: '', password: '', role: 'analyst'});
                                             }
                                         }
                                     },
