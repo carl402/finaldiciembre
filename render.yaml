@@ -1,10 +1,10 @@
 services:
   - type: web
     name: take-a-look
-    env: node
+    runtime: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm run start
+    startCommand: node index.js
     envVars:
       - key: NODE_ENV
         value: production

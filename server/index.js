@@ -25,6 +25,21 @@ async function startServer() {
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({ extended: false, limit: '50mb' }));
     
+    // Middleware de logging
+    app.use((req, res, next) => {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+      next();
+    });
+    
+    // Middleware de manejo de errores
+    app.use((err, req, res, next) => {
+      console.error('Server error:', err);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+      });
+    });
+    
     // Servir archivos estáticos en producción
     if (process.env.NODE_ENV === 'production') {
       app.use(express.static(path.join(__dirname, '../client/dist')));
@@ -51,15 +66,56 @@ async function startServer() {
       }
     });
     
-    // API básica
+    // API básica con manejo de errores
     app.get('/api/auth/user', (req, res) => {
-      res.json({
-        id: "demo-user",
-        email: "demo@example.com",
-        firstName: "Demo",
-        lastName: "User",
-        role: "admin"
-      });
+      try {
+        res.json({
+          id: "demo-user",
+          email: "demo@example.com",
+          firstName: "Demo",
+          lastName: "User",
+          role: "admin"
+        });
+      } catch (error) {
+        res.status(500).json({ error: 'Auth error' });
+      }
+    });
+    
+    // API endpoints básicos
+    app.get('/api/logs', async (req, res) => {
+      try {
+        const client = await pool.connect();
+        const result = await client.query('SELECT * FROM logs ORDER BY created_at DESC LIMIT 50');
+        client.release();
+        res.json(result.rows || []);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+        res.status(500).json({ error: 'Failed to fetch logs', message: error.message });
+      }
+    });
+    
+    app.get('/api/dashboard/stats', async (req, res) => {
+      try {
+        const client = await pool.connect();
+        const logsResult = await client.query('SELECT COUNT(*) as total FROM logs');
+        const errorsResult = await client.query('SELECT COUNT(*) as total FROM errors');
+        client.release();
+        
+        res.json({
+          totalFiles: parseInt(logsResult.rows[0]?.total || 0),
+          totalErrors: parseInt(errorsResult.rows[0]?.total || 0),
+          successRate: 95,
+          errorTrends: []
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+      }
+    });
+    
+    // Catch all API errors
+    app.use('/api/*', (req, res) => {
+      res.status(404).json({ error: 'API endpoint not found' });
     });
     
     // Catch-all para SPA

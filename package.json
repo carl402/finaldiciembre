@@ -9,7 +9,7 @@
     "dev:client": "cd client && npm run dev",
     "build": "npm run build:client",
     "build:client": "cd client && npm install && npm run build",
-    "start": "node server/index.js",
+    "start": "node index.js",
     "postinstall": "cd client && npm install",
     "preview": "cd client && npm run preview",
     "db:init": "node scripts/init-db.js",
@@ -43,6 +43,10 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
