@@ -114,16 +114,15 @@ async function startServer() {
     });
     
     // Catch all API errors
-    app.use('/api/*', (req, res) => {
-      res.status(404).json({ error: 'API endpoint not found' });
+    app.use('/api', (req, res, next) => {
+      if (!res.headersSent) {
+        res.status(404).json({ error: 'API endpoint not found' });
+      }
     });
     
     // Catch-all para SPA
     if (process.env.NODE_ENV === 'production') {
-      app.get('*', (req, res) => {
-        if (req.path.startsWith('/api/') || req.path === '/health') {
-          return res.status(404).json({ message: 'API endpoint not found' });
-        }
+      app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, '../client/dist/index.html'));
       });
     }
