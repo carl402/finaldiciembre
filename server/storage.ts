@@ -7,6 +7,7 @@ import {
   simulations,
   scenarios,
   simulationReports,
+  simulationConfigs,
   type User,
   type UpsertUser,
   type Log,
@@ -85,7 +86,7 @@ export class DatabaseStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(userData as any)
       .onConflictDoUpdate({
         target: users.id,
         set: {
@@ -293,6 +294,11 @@ export class DatabaseStorage implements IStorage {
     return s;
   }
 
+  async getSimulationConfigById(id: string): Promise<any> {
+    const [config] = await db.select().from(simulationConfigs).where(eq(simulationConfigs.id, id));
+    return config;
+  }
+
   async getSimulationsByProjectId(projectId: string): Promise<any[]> {
     const result = await db.select().from(simulations).where(eq(simulations.projectId, projectId)).orderBy(desc(simulations.createdAt));
     return Array.isArray(result) ? result : [];
@@ -341,7 +347,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: any): Promise<any> {
-    const [user] = await db.insert(users).values(userData).returning();
+    const [user] = await db.insert(users).values(userData as any).returning();
     return user;
   }
 

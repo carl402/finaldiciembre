@@ -70,13 +70,17 @@ export class SimulationService {
 
     await storage.updateSimulationStatus(simulationId, "running");
 
-    const iterations = (sim.iterations as any) || 1000;
+    // Get simulation config to get iterations
+    const config = await storage.getSimulationConfigById ? 
+      await storage.getSimulationConfigById(sim.configId) : null;
+    const iterations = config?.iterations || 1000;
+    
     const scenarios = await storage.getScenariosBySimulationId(simulationId);
 
-    const project = await storage.getProjectById(sim.projectId as any);
+    const project = await storage.getProjectById(sim.projectId);
     const projectName = project?.name || "unknown";
 
-    const config: SimulationConfig = (sim.config as any) || {};
+    const simulationConfig: SimulationConfig = { iterations };
 
     const report: any = {
       simulationId,
@@ -101,10 +105,10 @@ export class SimulationService {
 
           // compute result: if formula present use it, otherwise sum numeric values
           let out = 0;
-          if (config.formula) {
+          if (simulationConfig.formula) {
             try {
               // Unsafe but simple evaluator for demo: expose vars
-              const fn = new Function("vars", `with(vars){ return ${config.formula}; }`);
+              const fn = new Function("vars", `with(vars){ return ${simulationConfig.formula}; }`);
               out = Number(fn(sampleVars)) || 0;
             } catch (e) {
               out = Object.values(sampleVars).reduce((s, v) => s + Number(v || 0), 0);
