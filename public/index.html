@@ -22,10 +22,11 @@
             
             const [projects, setProjects] = useState([]);
             const [users, setUsers] = useState([
-                {id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@montecarlo.com', role: 'admin'},
-                {id: 2, firstName: 'Analyst', lastName: 'User', email: 'analyst@montecarlo.com', role: 'analyst'}
+                {id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@montecarlo.com', password: 'admin123', role: 'admin'},
+                {id: 2, firstName: 'Analyst', lastName: 'User', email: 'analyst@montecarlo.com', password: 'analyst123', role: 'analyst'}
             ]);
             const [reports, setReports] = useState([]);
+            const [deletedReports, setDeletedReports] = useState([]);
             const [newProject, setNewProject] = useState({name: '', description: '', status: 'active'});
             const [selectedProject, setSelectedProject] = useState(null);
             const [projectVariables, setProjectVariables] = useState([]);
@@ -33,6 +34,8 @@
             const [simulationConfig, setSimulationConfig] = useState({iterations: 1000, randomSeed: null});
             const [newUser, setNewUser] = useState({firstName: '', lastName: '', email: '', password: '', role: 'analyst'});
             const [editingUser, setEditingUser] = useState(null);
+            const [changingPassword, setChangingPassword] = useState(null);
+            const [newPassword, setNewPassword] = useState('');
             const [searchProject, setSearchProject] = useState('');
             const [searchDate, setSearchDate] = useState('');
             const [viewingReport, setViewingReport] = useState(null);
@@ -112,16 +115,59 @@
                     histogram[binIndex]++;
                 });
                 
+                // Generar curva de densidad (aproximación)
+                const densityCurve = histogram.map((count, i) => ({
+                    x: metrics.min + (i + 0.5) * binSize,
+                    y: count / (results.length * binSize)
+                }));
+                
                 return {
                     histogram: {
                         bins: histogram,
                         labels: Array(bins).fill(0).map((_, i) => `${(metrics.min + i * binSize).toFixed(1)}-${(metrics.min + (i + 1) * binSize).toFixed(1)}`)
-                    }
+                    },
+                    densityCurve
                 };
             };
             
             const viewReport = (report) => {
                 setViewingReport(report);
+            };
+            
+            const deleteReport = (reportId) => {
+                const report = reports.find(r => r.id === reportId);
+                if (report) {
+                    const deletedReport = {...report, deletedAt: new Date().toISOString()};
+                    setDeletedReports([...deletedReports, deletedReport]);
+                    setReports(reports.filter(r => r.id !== reportId));
+                    alert('Reporte eliminado. Tienes 24 horas para recuperarlo.');
+                }
+            };
+            
+            const recoverReport = (reportId) => {
+                const report = deletedReports.find(r => r.id === reportId);
+                if (report) {
+                    const { deletedAt, ...cleanReport } = report;
+                    setReports([...reports, cleanReport]);
+                    setDeletedReports(deletedReports.filter(r => r.id !== reportId));
+                    alert('Reporte recuperado exitosamente.');
+                }
+            };
+            
+            const viewProjectReport = (projectName) => {
+                const projectReport = reports.find(r => r.project === projectName);
+                if (projectReport) {
+                    setCurrentPage('reportes');
+                    setTimeout(() => viewReport(projectReport), 100);
+                } else {
+                    alert('No hay reportes generados para este proyecto.');
+                }
+            };
+            
+            const logout = () => {
+                setUser(null);
+                setCurrentPage('login');
+                setLoginData({email: '', password: ''});
             };
             
             const downloadReport = (report, format) => {
@@ -152,17 +198,30 @@
                     `- Percentil 50: ${results.metrics.p50.toFixed(2)}\n` +
                     `- Percentil 90: ${results.metrics.p90.toFixed(2)}\n\n` +
                     `HISTOGRAMA:\n` +
-                    charts.histogram.labels.map((label, i) => `${label}: ${charts.histogram.bins[i]} casos`).join('\n');
+                    charts.histogram.labels.map((label, i) => `${label}: ${charts.histogram.bins[i]} casos`).join('\n') + '\n\n' +
+                    `CURVA DE DENSIDAD:\n` +
+                    charts.densityCurve.map(point => `x: ${point.x.toFixed(2)}, densidad: ${point.y.toFixed(4)}`).join('\n');
             };
+            
+            // Limpiar reportes eliminados después de 24 horas
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    const now = new Date();
+                    setDeletedReports(prev => prev.filter(report => {
+                        const deletedTime = new Date(report.deletedAt);
+                        const hoursDiff = (now - deletedTime) / (1000 * 60 * 60);
+                        return hoursDiff < 24;
+                    }));
+                }, 60000); // Verificar cada minuto
+                
+                return () => clearInterval(interval);
+            }, []);
             
             const handleLogin = async () => {
                 try {
-                    if (loginData.email === 'admin@montecarlo.com' && loginData.password === 'admin123') {
-                        setUser({id: 1, email: 'admin@montecarlo.com', firstName: 'Admin', role: 'admin'});
-                        setCurrentPage('reportes');
-                        setLoginError('');
-                    } else if (loginData.email === 'analyst@montecarlo.com' && loginData.password === 'analyst123') {
-                        setUser({id: 2, email: 'analyst@montecarlo.com', firstName: 'Analyst', role: 'analyst'});
+                    const foundUser = users.find(u => u.email === loginData.email && u.password === loginData.password);
+                    if (foundUser) {
+                        setUser(foundUser);
                         setCurrentPage('reportes');
                         setLoginError('');
                     } else {
@@ -177,7 +236,7 @@
                 React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
                         React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '🎲 Monte Carlo'),
+                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '📊∑ Monte Carlo'),
                             React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación'),
                             React.createElement('div', { className: 'mt-4 text-sm text-gray-500' },
                                 React.createElement('p', null, 'Demo: admin@montecarlo.com / admin123'),
@@ -212,7 +271,7 @@
             const Sidebar = () => (
                 React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
                     React.createElement('div', { className: 'p-6 border-b' },
-                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🎲 Monte Carlo'),
+                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '📊∑ Monte Carlo'),
                         React.createElement('p', { className: 'text-sm text-gray-600' }, `Bienvenido, ${user?.firstName}`)
                     ),
                     React.createElement('nav', { className: 'p-4 space-y-2' },
@@ -259,6 +318,25 @@
                                 }, 'Buscar')
                             )
                         ),
+                        
+                        // Reportes eliminados (papelera de reciclaje)
+                        deletedReports.length > 0 && React.createElement('div', { className: 'bg-yellow-50 p-4 rounded-xl shadow mb-6' },
+                            React.createElement('h3', { className: 'font-semibold mb-3 text-yellow-800' }, '🗑️ Reportes Eliminados (Recuperables por 24h)'),
+                            React.createElement('div', { className: 'space-y-2' },
+                                deletedReports.map(report => {
+                                    const deletedTime = new Date(report.deletedAt);
+                                    const hoursLeft = 24 - Math.floor((new Date() - deletedTime) / (1000 * 60 * 60));
+                                    return React.createElement('div', { key: report.id, className: 'flex justify-between items-center bg-white p-3 rounded' },
+                                        React.createElement('span', null, `${report.name} (${hoursLeft}h restantes)`),
+                                        React.createElement('button', {
+                                            onClick: () => recoverReport(report.id),
+                                            className: 'bg-green-600 text-white px-3 py-1 rounded text-sm'
+                                        }, 'Recuperar')
+                                    );
+                                })
+                            )
+                        ),
+                        
                         React.createElement('div', { className: 'bg-white rounded-xl shadow' },
                             React.createElement('table', { className: 'w-full' },
                                 React.createElement('thead', { className: 'bg-gray-50' },
@@ -287,7 +365,11 @@
                                                 React.createElement('button', {
                                                     onClick: () => viewReport(report),
                                                     className: 'bg-purple-600 text-white px-3 py-1 rounded text-sm'
-                                                }, 'Ver')
+                                                }, 'Ver'),
+                                                React.createElement('button', {
+                                                    onClick: () => deleteReport(report.id),
+                                                    className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Eliminar')
                                             )
                                         )
                                     )
@@ -295,7 +377,7 @@
                             )
                         ),
                         
-                        // Modal para ver reporte detallado
+                        // Modal para ver reporte detallado con curvas de densidad
                         viewingReport && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
                             React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-auto' },
                                 React.createElement('div', { className: 'flex justify-between items-center mb-6' },
@@ -337,7 +419,7 @@
                                 ),
                                 
                                 React.createElement('div', { className: 'mt-6' },
-                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Distribución de Resultados (Histograma)'),
+                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Histograma de Distribución'),
                                     React.createElement('div', { className: 'bg-gray-50 p-4 rounded' },
                                         React.createElement('div', { className: 'flex items-end space-x-1 h-40' },
                                             viewingReport.charts.histogram.bins.map((count, i) => {
@@ -349,6 +431,25 @@
                                                     style: { height: `${height}%`, minHeight: '20px' },
                                                     title: `${viewingReport.charts.histogram.labels[i]}: ${count} casos`
                                                 }, count);
+                                            })
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6' },
+                                    React.createElement('h3', { className: 'font-semibold mb-3' }, 'Curva de Densidad'),
+                                    React.createElement('div', { className: 'bg-gray-50 p-4 rounded h-40 relative' },
+                                        React.createElement('svg', { className: 'w-full h-full' },
+                                            React.createElement('polyline', {
+                                                points: viewingReport.charts.densityCurve.map((point, i) => {
+                                                    const x = (i / (viewingReport.charts.densityCurve.length - 1)) * 100;
+                                                    const maxY = Math.max(...viewingReport.charts.densityCurve.map(p => p.y));
+                                                    const y = 100 - (point.y / maxY) * 80;
+                                                    return `${x},${y}`;
+                                                }).join(' '),
+                                                fill: 'none',
+                                                stroke: '#ef4444',
+                                                strokeWidth: '2'
                                             })
                                         )
                                     )
@@ -461,6 +562,10 @@
                                                     onClick: () => setSelectedProject(project),
                                                     className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Configurar'),
+                                                React.createElement('button', {
+                                                    onClick: () => viewProjectReport(project.name),
+                                                    className: 'bg-purple-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Ver Reporte'),
                                                 React.createElement('button', {
                                                     onClick: () => setProjects(projects.filter(p => p.id !== project.id)),
                                                     className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
@@ -633,6 +738,10 @@
                                                     className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Editar'),
                                                 React.createElement('button', {
+                                                    onClick: () => setChangingPassword(user),
+                                                    className: 'bg-yellow-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Cambiar Contraseña'),
+                                                React.createElement('button', {
                                                     onClick: () => setUsers(users.filter(u => u.id !== user.id)),
                                                     className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
                                                 }, 'Eliminar')
@@ -642,6 +751,41 @@
                                 )
                             )
                         ),
+                        
+                        // Modal para cambiar contraseña
+                        changingPassword && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4' },
+                            React.createElement('div', { className: 'bg-white rounded-xl p-6 w-full max-w-md' },
+                                React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, `Cambiar Contraseña - ${changingPassword.firstName}`),
+                                React.createElement('input', {
+                                    type: 'password',
+                                    placeholder: 'Nueva contraseña',
+                                    value: newPassword,
+                                    onChange: (e) => setNewPassword(e.target.value),
+                                    className: 'w-full p-3 border rounded mb-4'
+                                }),
+                                React.createElement('div', { className: 'flex gap-2' },
+                                    React.createElement('button', {
+                                        onClick: () => {
+                                            if (newPassword) {
+                                                setUsers(users.map(u => u.id === changingPassword.id ? {...u, password: newPassword} : u));
+                                                setChangingPassword(null);
+                                                setNewPassword('');
+                                                alert('Contraseña actualizada exitosamente');
+                                            }
+                                        },
+                                        className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+                                    }, 'Actualizar'),
+                                    React.createElement('button', {
+                                        onClick: () => {
+                                            setChangingPassword(null);
+                                            setNewPassword('');
+                                        },
+                                        className: 'bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700'
+                                    }, 'Cancelar')
+                                )
+                            )
+                        ),
+                        
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
                             React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, editingUser ? 'Editar Usuario' : 'Crear Usuario'),
                             React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-4' },
@@ -709,7 +853,17 @@
                     currentPage === 'settings' && React.createElement('div', null,
                         React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Configuración'),
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                            React.createElement('p', null, 'Configuraciones del sistema Monte Carlo')
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Configuraciones del Sistema Monte Carlo'),
+                            React.createElement('div', { className: 'space-y-4' },
+                                React.createElement('div', { className: 'border-t pt-4' },
+                                    React.createElement('h4', { className: 'font-medium mb-2' }, 'Sesión de Usuario'),
+                                    React.createElement('p', { className: 'text-gray-600 mb-4' }, 'Cerrar sesión y volver al login'),
+                                    React.createElement('button', {
+                                        onClick: logout,
+                                        className: 'bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700'
+                                    }, '🚪 Cerrar Sesión')
+                                )
+                            )
                         )
                     )
                 )
