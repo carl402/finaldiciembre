@@ -7,7 +7,7 @@ const app = express();
 
 async function startServer() {
   try {
-    console.log('🚀 Iniciando servidor Take a Look...');
+    console.log('🚀 Iniciando servidor Monte Carlo...');
     
     // Verificar conexión a base de datos
     console.log('📡 Verificando conexión a base de datos...');

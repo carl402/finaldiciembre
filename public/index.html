@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Take a Look - Sistema de Análisis de Logs</title>
+    <title>Monte Carlo - Sistema de Simulación</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -38,8 +38,8 @@
                 React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
                         React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '🔍 Take a Look'),
-                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Análisis de Logs')
+                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '🎲 Monte Carlo'),
+                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación')
                         ),
                         React.createElement('div', { className: 'space-y-4' },
                             React.createElement('input', {
@@ -64,22 +64,31 @@
             const Sidebar = () => (
                 React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
                     React.createElement('div', { className: 'p-6 border-b' },
-                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🔍 Take a Look')
+                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🎲 Monte Carlo')
                     ),
                     React.createElement('nav', { className: 'p-4 space-y-2' },
-                        ['dashboard', 'logs', 'users', 'settings'].map(page => 
+                        ['reportes', 'proyectos', 'users', 'settings'].map(page => 
                             React.createElement('button', {
                                 key: page,
                                 onClick: () => setCurrentPage(page),
                                 className: `w-full text-left p-3 rounded-lg ${currentPage === page ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`
                             }, 
-                            page === 'dashboard' ? '📊 Dashboard' :
-                            page === 'logs' ? '📁 Logs' :
+                            page === 'reportes' ? '📊 Reportes' :
+                            page === 'proyectos' ? '📁 Proyectos' :
                             page === 'users' ? '👥 Usuarios' : '⚙️ Configuración')
                         )
                     )
                 )
             );
+            
+            const [projects, setProjects] = useState([]);
+            const [users, setUsers] = useState([{id: 1, name: 'Demo User', email: 'demo@example.com', role: 'Admin'}]);
+            const [reports, setReports] = useState([{id: 1, project: 'Proyecto A', date: '2024-01-15', name: 'Reporte Simulación 1'}]);
+            const [newProject, setNewProject] = useState('');
+            const [newUser, setNewUser] = useState({name: '', email: '', role: 'User'});
+            const [editingUser, setEditingUser] = useState(null);
+            const [searchProject, setSearchProject] = useState('');
+            const [searchDate, setSearchDate] = useState('');
             
             if (currentPage === 'login') {
                 return React.createElement(LoginPage);
@@ -87,41 +96,179 @@
             
             return React.createElement('div', { className: 'flex h-screen bg-gray-50' },
                 React.createElement(Sidebar),
-                React.createElement('div', { className: 'flex-1 p-6' },
-                    currentPage === 'dashboard' && React.createElement('div', null,
-                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Dashboard'),
-                        React.createElement('div', { className: 'grid grid-cols-3 gap-6' },
-                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Total Logs'),
-                                React.createElement('p', { className: 'text-3xl font-bold text-blue-600' }, stats.totalFiles || '0')
-                            ),
-                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Errores'),
-                                React.createElement('p', { className: 'text-3xl font-bold text-red-600' }, stats.totalErrors || '0')
-                            ),
-                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Éxito'),
-                                React.createElement('p', { className: 'text-3xl font-bold text-green-600' }, '100%')
+                React.createElement('div', { className: 'flex-1 p-6 overflow-auto' },
+                    currentPage === 'reportes' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Reportes Generados'),
+                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow mb-6' },
+                            React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Buscar por proyecto',
+                                    value: searchProject,
+                                    onChange: (e) => setSearchProject(e.target.value),
+                                    className: 'p-2 border rounded'
+                                }),
+                                React.createElement('input', {
+                                    type: 'date',
+                                    value: searchDate,
+                                    onChange: (e) => setSearchDate(e.target.value),
+                                    className: 'p-2 border rounded'
+                                }),
+                                React.createElement('button', {
+                                    className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+                                }, 'Buscar')
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-xl shadow' },
+                            React.createElement('table', { className: 'w-full' },
+                                React.createElement('thead', { className: 'bg-gray-50' },
+                                    React.createElement('tr', null,
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Proyecto'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Fecha'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Nombre'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Acciones')
+                                    )
+                                ),
+                                React.createElement('tbody', null,
+                                    reports.map(report => 
+                                        React.createElement('tr', { key: report.id, className: 'border-t' },
+                                            React.createElement('td', { className: 'p-4' }, report.project),
+                                            React.createElement('td', { className: 'p-4' }, report.date),
+                                            React.createElement('td', { className: 'p-4' }, report.name),
+                                            React.createElement('td', { className: 'p-4 space-x-2' },
+                                                React.createElement('button', { className: 'bg-green-600 text-white px-3 py-1 rounded text-sm' }, 'PDF'),
+                                                React.createElement('button', { className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm' }, 'DOC')
+                                            )
+                                        )
+                                    )
+                                )
                             )
                         )
                     ),
-                    currentPage === 'logs' && React.createElement('div', null,
-                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Logs'),
-                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                            React.createElement('input', { type: 'file', className: 'mb-4' }),
-                            React.createElement('button', { className: 'bg-blue-600 text-white px-4 py-2 rounded' }, 'Subir Log')
+                    currentPage === 'proyectos' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Proyectos'),
+                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow mb-6' },
+                            React.createElement('div', { className: 'flex gap-4 mb-4' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Nombre del proyecto',
+                                    value: newProject,
+                                    onChange: (e) => setNewProject(e.target.value),
+                                    className: 'flex-1 p-2 border rounded'
+                                }),
+                                React.createElement('button', {
+                                    onClick: () => {
+                                        if (newProject) {
+                                            setProjects([...projects, {id: Date.now(), name: newProject}]);
+                                            setNewProject('');
+                                        }
+                                    },
+                                    className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+                                }, 'Crear Proyecto')
+                            ),
+                            React.createElement('input', {
+                                type: 'text',
+                                placeholder: 'Buscar proyectos...',
+                                className: 'w-full p-2 border rounded'
+                            })
+                        ),
+                        React.createElement('div', { className: 'grid gap-4' },
+                            projects.map(project => 
+                                React.createElement('div', { key: project.id, className: 'bg-white p-4 rounded-xl shadow flex justify-between items-center' },
+                                    React.createElement('span', { className: 'font-semibold' }, project.name),
+                                    React.createElement('button', {
+                                        onClick: () => setProjects(projects.filter(p => p.id !== project.id)),
+                                        className: 'bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700'
+                                    }, 'Eliminar')
+                                )
+                            )
                         )
                     ),
                     currentPage === 'users' && React.createElement('div', null,
                         React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Usuarios'),
+                        React.createElement('div', { className: 'bg-white rounded-xl shadow mb-6' },
+                            React.createElement('table', { className: 'w-full' },
+                                React.createElement('thead', { className: 'bg-gray-50' },
+                                    React.createElement('tr', null,
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Nombre'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Email'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Rol'),
+                                        React.createElement('th', { className: 'p-4 text-left' }, 'Acciones')
+                                    )
+                                ),
+                                React.createElement('tbody', null,
+                                    users.map(user => 
+                                        React.createElement('tr', { key: user.id, className: 'border-t' },
+                                            React.createElement('td', { className: 'p-4' }, user.name),
+                                            React.createElement('td', { className: 'p-4' }, user.email),
+                                            React.createElement('td', { className: 'p-4' }, user.role),
+                                            React.createElement('td', { className: 'p-4 space-x-2' },
+                                                React.createElement('button', {
+                                                    onClick: () => setEditingUser(user),
+                                                    className: 'bg-blue-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Editar'),
+                                                React.createElement('button', {
+                                                    onClick: () => setUsers(users.filter(u => u.id !== user.id)),
+                                                    className: 'bg-red-600 text-white px-3 py-1 rounded text-sm'
+                                                }, 'Eliminar')
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                            React.createElement('p', null, 'Demo User - demo@example.com')
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, editingUser ? 'Editar Usuario' : 'Crear Usuario'),
+                            React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Nombre',
+                                    value: editingUser ? editingUser.name : newUser.name,
+                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, name: e.target.value}) : setNewUser({...newUser, name: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                }),
+                                React.createElement('input', {
+                                    type: 'email',
+                                    placeholder: 'Email',
+                                    value: editingUser ? editingUser.email : newUser.email,
+                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                }),
+                                React.createElement('select', {
+                                    value: editingUser ? editingUser.role : newUser.role,
+                                    onChange: (e) => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value}),
+                                    className: 'p-2 border rounded'
+                                },
+                                    React.createElement('option', { value: 'User' }, 'Usuario'),
+                                    React.createElement('option', { value: 'Admin' }, 'Administrador')
+                                )
+                            ),
+                            React.createElement('div', { className: 'flex gap-2' },
+                                React.createElement('button', {
+                                    onClick: () => {
+                                        if (editingUser) {
+                                            setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
+                                            setEditingUser(null);
+                                        } else {
+                                            if (newUser.name && newUser.email) {
+                                                setUsers([...users, {...newUser, id: Date.now()}]);
+                                                setNewUser({name: '', email: '', role: 'User'});
+                                            }
+                                        }
+                                    },
+                                    className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'
+                                }, editingUser ? 'Actualizar' : 'Crear'),
+                                editingUser && React.createElement('button', {
+                                    onClick: () => setEditingUser(null),
+                                    className: 'bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700'
+                                }, 'Cancelar')
+                            )
                         )
                     ),
                     currentPage === 'settings' && React.createElement('div', null,
                         React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Configuración'),
                         React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
-                            React.createElement('p', null, 'Configuraciones del sistema')
+                            React.createElement('p', null, 'Configuraciones del sistema Monte Carlo')
                         )
                     )
                 )
