@@ -283,7 +283,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSimulation(sim: any): Promise<any> {
-    const [s] = await db.insert(simulations).values(sim as any).returning();
+    const res = await db.insert(simulations).values(sim as any).returning();
+    const s = Array.isArray(res) ? res[0] : (res as any);
     return s;
   }
 
@@ -303,7 +304,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createScenario(scenario: any): Promise<any> {
-    const [sc] = await db.insert(scenarios).values(scenario as any).returning();
+    const res = await db.insert(scenarios).values(scenario as any).returning();
+    const sc = Array.isArray(res) ? res[0] : (res as any);
     return sc;
   }
 
@@ -313,7 +315,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSimulationReport(report: InsertSimulationReport): Promise<SimulationReport> {
-    const [r] = await db.insert(simulationReports).values(report).returning();
+    const res = await db.insert(simulationReports).values(report).returning();
+    const r = Array.isArray(res) ? res[0] : (res as any);
     return r;
   }
 
