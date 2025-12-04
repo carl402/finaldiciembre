@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take a Look - Sistema de Análisis de Logs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script>
+        const { useState, useEffect } = React;
+        
+        function App() {
+            const [currentPage, setCurrentPage] = useState('login');
+            const [user, setUser] = useState(null);
+            const [stats, setStats] = useState({ totalFiles: 0, totalErrors: 0, successRate: 100 });
+            
+            useEffect(() => {
+                fetch('/api/auth/user')
+                    .then(r => r.json())
+                    .then(u => {
+                        setUser(u);
+                        if (currentPage === 'login') setCurrentPage('dashboard');
+                    })
+                    .catch(() => {});
+                    
+                fetch('/api/dashboard/stats')
+                    .then(r => r.json())
+                    .then(s => setStats(s))
+                    .catch(() => {});
+            }, []);
+            
+            const LoginPage = () => (
+                React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
+                    React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
+                        React.createElement('div', { className: 'text-center mb-8' },
+                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '🔍 Take a Look'),
+                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Análisis de Logs')
+                        ),
+                        React.createElement('div', { className: 'space-y-4' },
+                            React.createElement('input', {
+                                type: 'text',
+                                placeholder: 'Usuario',
+                                className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
+                            }),
+                            React.createElement('input', {
+                                type: 'password',
+                                placeholder: 'Contraseña',
+                                className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
+                            }),
+                            React.createElement('button', {
+                                onClick: () => setCurrentPage('dashboard'),
+                                className: 'w-full bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 font-semibold'
+                            }, 'Iniciar Sesión')
+                        )
+                    )
+                )
+            );
+            
+            const Sidebar = () => (
+                React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
+                    React.createElement('div', { className: 'p-6 border-b' },
+                        React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, '🔍 Take a Look')
+                    ),
+                    React.createElement('nav', { className: 'p-4 space-y-2' },
+                        ['dashboard', 'logs', 'users', 'settings'].map(page => 
+                            React.createElement('button', {
+                                key: page,
+                                onClick: () => setCurrentPage(page),
+                                className: `w-full text-left p-3 rounded-lg ${currentPage === page ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`
+                            }, 
+                            page === 'dashboard' ? '📊 Dashboard' :
+                            page === 'logs' ? '📁 Logs' :
+                            page === 'users' ? '👥 Usuarios' : '⚙️ Configuración')
+                        )
+                    )
+                )
+            );
+            
+            if (currentPage === 'login') {
+                return React.createElement(LoginPage);
+            }
+            
+            return React.createElement('div', { className: 'flex h-screen bg-gray-50' },
+                React.createElement(Sidebar),
+                React.createElement('div', { className: 'flex-1 p-6' },
+                    currentPage === 'dashboard' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Dashboard'),
+                        React.createElement('div', { className: 'grid grid-cols-3 gap-6' },
+                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Total Logs'),
+                                React.createElement('p', { className: 'text-3xl font-bold text-blue-600' }, stats.totalFiles || '0')
+                            ),
+                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Errores'),
+                                React.createElement('p', { className: 'text-3xl font-bold text-red-600' }, stats.totalErrors || '0')
+                            ),
+                            React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                                React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'Éxito'),
+                                React.createElement('p', { className: 'text-3xl font-bold text-green-600' }, '100%')
+                            )
+                        )
+                    ),
+                    currentPage === 'logs' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Gestión de Logs'),
+                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                            React.createElement('input', { type: 'file', className: 'mb-4' }),
+                            React.createElement('button', { className: 'bg-blue-600 text-white px-4 py-2 rounded' }, 'Subir Log')
+                        )
+                    ),
+                    currentPage === 'users' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Usuarios'),
+                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                            React.createElement('p', null, 'Demo User - demo@example.com')
+                        )
+                    ),
+                    currentPage === 'settings' && React.createElement('div', null,
+                        React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Configuración'),
+                        React.createElement('div', { className: 'bg-white p-6 rounded-xl shadow' },
+                            React.createElement('p', null, 'Configuraciones del sistema')
+                        )
+                    )
+                )
+            );
+        }
+        
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>

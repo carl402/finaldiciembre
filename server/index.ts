@@ -49,14 +49,25 @@ async function startServer() {
     // Servir archivos estáticos en producción
     if (process.env.NODE_ENV === 'production') {
       const path = require('path');
-      app.use(express.static(path.join(__dirname, '../../client/dist')));
-      
-      app.get('*', (req, res) => {
-        if (req.path.startsWith('/api/') || req.path === '/health') {
-          return;
+      const distPath = path.join(__dirname, '../../client/dist');
+
+      // ensure the build exists
+      try {
+        const fs = require('fs');
+        if (!fs.existsSync(distPath)) {
+          console.warn(`Production build not found at ${distPath}. Make sure to run client build.`);
+        } else {
+          app.use(express.static(distPath));
+
+          // serve index.html for any non-API route so SPA routing works
+          app.get('*', (req, res, next) => {
+            if (req.path.startsWith('/api/') || req.path === '/health') return next();
+            res.sendFile(path.join(distPath, 'index.html'));
+          });
         }
-        res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
-      });
+      } catch (err) {
+        console.warn('Error checking production dist path', err);
+      }
     }
     
     // Ruta de health check
