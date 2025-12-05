@@ -15,10 +15,8 @@
         const { useState, useEffect } = React;
         
         function App() {
-            const [currentPage, setCurrentPage] = useState('login');
-            const [user, setUser] = useState(null);
-            const [loginData, setLoginData] = useState({email: '', password: ''});
-            const [loginError, setLoginError] = useState('');
+            const [currentPage, setCurrentPage] = useState('reportes');
+            const [user, setUser] = useState({id: 'demo-user', firstName: 'Usuario', lastName: 'Demo', email: 'demo@montecarlo.com', role: 'admin'});
             
             const [projects, setProjects] = useState([]);
             const [users, setUsers] = useState([]);
@@ -39,12 +37,10 @@
             
             // Load data from API
             useEffect(() => {
-                if (user) {
-                    loadProjects();
-                    loadUsers();
-                    loadReports();
-                }
-            }, [user]);
+                loadProjects();
+                loadUsers();
+                loadReports();
+            }, []);
             
             const loadProjects = async () => {
                 try {
@@ -224,9 +220,7 @@
             };
             
             const logout = () => {
-                setUser(null);
-                setCurrentPage('login');
-                setLoginData({email: '', password: ''});
+                alert('Sesión cerrada');
             };
             
             const downloadReport = async (report, format) => {
@@ -268,34 +262,7 @@
                 return () => clearInterval(interval);
             }, []);
             
-            const handleLogin = async () => {
-                try {
-                    console.log('🔐 Attempting login with:', loginData);
-                    
-                    const response = await fetch('/api/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(loginData)
-                    });
-                    
-                    console.log('📞 Response status:', response.status);
-                    
-                    if (response.ok) {
-                        const userData = await response.json();
-                        console.log('✅ Login successful:', userData);
-                        setUser(userData);
-                        setCurrentPage('reportes');
-                        setLoginError('');
-                    } else {
-                        const errorData = await response.json();
-                        console.log('❌ Login failed:', errorData);
-                        setLoginError('Credenciales inválidas');
-                    }
-                } catch (error) {
-                    console.error('❌ Login error:', error);
-                    setLoginError('Error de conexión');
-                }
-            };
+
             
             const createProject = async () => {
                 if (!newProject.name) return;
@@ -419,44 +386,7 @@
                 }
             };
             
-            const LoginPage = () => (
-                React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4' },
-                    React.createElement('div', { className: 'bg-white rounded-xl shadow-2xl p-8 w-full max-w-md' },
-                        React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, '∑onte Carlo'),
-                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Simulación'),
-                            React.createElement('div', { className: 'mt-4 text-sm text-gray-500' },
-                                React.createElement('p', null, 'Ingrese sus credenciales para acceder')
-                            )
-                        ),
-                        loginError && React.createElement('div', { className: 'bg-red-100 text-red-700 p-3 rounded mb-4' }, loginError),
-                        React.createElement('div', { className: 'space-y-4' },
-                            React.createElement('input', {
-                                type: 'email',
-                                placeholder: 'Email',
-                                value: loginData.email,
-                                onChange: (e) => setLoginData({...loginData, email: e.target.value}),
-                                onInput: (e) => setLoginData({...loginData, email: e.target.value}),
-                                autoComplete: 'email',
-                                className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                            }),
-                            React.createElement('input', {
-                                type: 'password',
-                                placeholder: 'Contraseña',
-                                value: loginData.password,
-                                onChange: (e) => setLoginData({...loginData, password: e.target.value}),
-                                onInput: (e) => setLoginData({...loginData, password: e.target.value}),
-                                autoComplete: 'current-password',
-                                className: 'w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                            }),
-                            React.createElement('button', {
-                                onClick: handleLogin,
-                                className: 'w-full bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 font-semibold'
-                            }, 'Iniciar Sesión')
-                        )
-                    )
-                )
-            );
+
             
             const Sidebar = () => (
                 React.createElement('div', { className: 'w-64 bg-white shadow-lg h-full' },
@@ -479,9 +409,7 @@
                 )
             );
             
-            if (currentPage === 'login') {
-                return React.createElement(LoginPage);
-            }
+
             
             return React.createElement('div', { className: 'flex h-screen bg-gray-50' },
                 React.createElement(Sidebar),
